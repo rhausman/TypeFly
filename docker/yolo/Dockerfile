@@ -1,14 +1,10 @@
 # Stage 1: Using Ubuntu for preparation
 #FROM ubuntu:22.04 as builder
+#FROM ultralytics/yolov5:m1-pyt-torch1.12-cpu
 FROM ultralytics/yolov5:latest-arm64
 # ultralytics/yolov5
-# RUN sed -i 's|http://\([a-z0-9.-]*\)\.archive.ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|' /etc/apt/sources.list
-#RUN sed -i 's/ports.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list && \
-#    sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
 RUN sed -i 's|ports.ubuntu.com/ubuntu-ports|old-releases.ubuntu.com/ubuntu|g' /etc/apt/sources.list && \
     apt-get update
-RUN cat /etc/apt/sources.list
-
 RUN apt update
 RUN apt install -y nano wget
 RUN pip install grpcio-tools ultralytics

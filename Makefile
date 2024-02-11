@@ -17,7 +17,7 @@ stop: validate_service
 start: validate_service
 	@make stop SERVICE=$(SERVICE)
 	@echo "=> Starting typefly-$(SERVICE)..."
-	docker run -td --privileged --net=host $(GPU_OPTIONS) --ipc=host \
+	docker run -td --privileged --net=host --ipc=host \
 		--env-file ./docker/env.list \
     	--name="typefly-$(SERVICE)" typefly-$(SERVICE):0.1
 
