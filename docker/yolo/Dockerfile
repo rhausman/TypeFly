@@ -1,8 +1,6 @@
-# Stage 1: Using Ubuntu for preparation
-#FROM ubuntu:22.04 as builder
-#FROM ultralytics/yolov5:m1-pyt-torch1.12-cpu
 FROM ultralytics/yolov5:latest-arm64
 # ultralytics/yolov5
+# Because this version of ubuntu (22.10) is no longer supported, we have to use an old package release
 RUN sed -i 's|ports.ubuntu.com/ubuntu-ports|old-releases.ubuntu.com/ubuntu|g' /etc/apt/sources.list && \
     apt-get update
 RUN apt update
@@ -17,5 +15,5 @@ WORKDIR /workspace
 
 # generate the python files from the proto files
 RUN cd /workspace/proto && bash ./generate.sh
-
-CMD ["python", "./serving/yolo/yolo_service.py"]
+RUN echo "almost done!"
+CMD ["python3", "./serving/yolo/yolo_service.py"]
