@@ -17,23 +17,25 @@ import hyrch_serving_pb2_grpc
 
 VISION_SERVICE_IP = os.environ.get("VISION_SERVICE_IP", "localhost")
 YOLO_SERVICE_PORT = os.environ.get("YOLO_SERVICE_PORT", "50050").split(",")[0]
+IS_LOCAL_YOLO_SERVICE = os.getenv("IS_LOCAL_YOLO_SERVICE", 'False').lower() in ('true', '1', 't')
 
 '''
 Access the YOLO service through gRPC.
 '''
 class YoloGRPCClient():
-    def __init__(self, is_local_service=False, shared_yolo_result: SharedYoloResult=None):
-        self.is_local_service = is_local_service
-        if is_local_service:
+    def __init__(self, shared_yolo_result: SharedYoloResult=None):
+        self.is_local_service = IS_LOCAL_YOLO_SERVICE
+        if self.is_local_service:
             channel = grpc.insecure_channel(f'localhost:{YOLO_SERVICE_PORT}')
         else:
+            raise Exception(f"remotely service! Port: {YOLO_SERVICE_PORT}")
             channel = grpc.aio.insecure_channel(f'{VISION_SERVICE_IP}:{YOLO_SERVICE_PORT}')
         self.stub = hyrch_serving_pb2_grpc.YoloServiceStub(channel)
         self.image_size = (640, 352)
         self.image_queue = queue.Queue()
         self.shared_yolo_result = shared_yolo_result
         self.latest_result_with_image = None
-        if not is_local_service:
+        if not self.is_local_service:
             self.latest_result_with_image_lock = asyncio.Lock()
             self.image_id_lock = asyncio.Lock()
             self.image_id = 0

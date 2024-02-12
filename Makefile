@@ -3,6 +3,9 @@
 SERVICE_LIST = router yolo
 GPU_OPTIONS=--gpus all
 
+# env variables for use in typefly
+export IS_LOCAL_YOLO_SERVICE=true
+
 validate_service:
 ifeq ($(filter $(SERVICE),$(SERVICE_LIST)),)
 	@echo Invalid SERVICE: [$(SERVICE)], valid values are [$(SERVICE_LIST)]
