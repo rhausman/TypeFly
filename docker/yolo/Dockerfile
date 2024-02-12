@@ -15,5 +15,4 @@ WORKDIR /workspace
 
 # generate the python files from the proto files
 RUN cd /workspace/proto && bash ./generate.sh
-RUN echo "almost done!"
 CMD ["python3", "./serving/yolo/yolo_service.py"]
