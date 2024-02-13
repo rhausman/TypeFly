@@ -6,6 +6,8 @@ RUN sed -i 's|ports.ubuntu.com/ubuntu-ports|old-releases.ubuntu.com/ubuntu|g' /e
 RUN apt update
 RUN apt install -y nano wget
 RUN pip install grpcio-tools ultralytics
+RUN apt-get install g++-aarch64-linux-gnu -y
+RUN pip3 install lap
 
 # copy the contents of the current project to /workspace
 COPY ../.. /workspace
@@ -15,4 +17,7 @@ WORKDIR /workspace
 
 # generate the python files from the proto files
 RUN cd /workspace/proto && bash ./generate.sh
+#RUN python3 -m http.server 50050 --bind 0.0.0.0
+EXPOSE 50050
 CMD ["python3", "./serving/yolo/yolo_service.py"]
+#CMD ["python3", "-m", "http.server", "50050", "--bind", "0.0.0.0"]
