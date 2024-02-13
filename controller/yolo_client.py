@@ -93,7 +93,7 @@ class YoloClient():
         json_results = json.loads(response.text)
         self.latest_result_with_image = (self.image_queue.get(), json_results)
         if self.shared_yolo_result is not None:
-            self.shared_yolo_result.set(json_results)
+            self.shared_yolo_result.set(self.latest_result_with_image)
 
     async def detect(self, image):
         image_bytes = YoloClient.image_to_bytes(image.resize(self.image_size))

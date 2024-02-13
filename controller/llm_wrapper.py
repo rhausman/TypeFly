@@ -1,7 +1,7 @@
 import os, json
 import openai
 
-openai.organization = "org-sAnQwPNnbSrHg1XyR4QYALf7"
+openai.organization = "org-QtvWueThrCK7SNHk7c4c031O" #"org-sAnQwPNnbSrHg1XyR4QYALf7" 
 openai.api_key = os.environ.get('OPENAI_API_KEY')
 # MODEL_NAME = "gpt-3.5-turbo-16k"
 MODEL_NAME = "gpt-4"

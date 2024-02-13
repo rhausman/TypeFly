@@ -62,7 +62,7 @@ class YoloGRPCClient():
         json_results = json.loads(response.json_data)
         self.latest_result_with_image = (self.image_queue.get(), json_results)
         if self.shared_yolo_result is not None:
-            self.shared_yolo_result.set(json_results)
+            self.shared_yolo_result.set(self.latest_result_with_image)
 
     async def detect(self, image):
         if self.is_local_service:
