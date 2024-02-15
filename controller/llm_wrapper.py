@@ -3,7 +3,7 @@ import openai
 
 openai.organization = "org-sAnQwPNnbSrHg1XyR4QYALf7" 
 openai.api_key = os.environ.get('OPENAI_API_KEY')
-# MODEL_NAME = "gpt-3.5-turbo-16k"
+# MODEL_NAME = "gpt-4-turbo-16k"
 MODEL_NAME = "gpt-4"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
