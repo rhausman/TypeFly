@@ -23,12 +23,12 @@ async def detect():
             print(content)
 
 async def basic_hello():
-    connector = ProxyConnector.from_url('socks5://localhost:1080')
-    async with aiohttp.ClientSession(connector=connector) as session:
+    # connector = ProxyConnector.from_url('socks5://localhost:1080')
+    async with aiohttp.ClientSession() as session:
         print("Sending test request...")
-        async with session.get("http://10.66.202.235:50049/test") as response:
+        async with session.get("http://localhost:8888/testing") as response: # 10.66.202.235:50049
             content = await response.text()
-            print(f"Got Response: {content}")
+            print(f"Got Response!!!: {content}")
 
 if __name__ == "__main__":
     asyncio.run(basic_hello())
