@@ -61,7 +61,7 @@ async def process_yolo():
             await grpcServiceManager.release_service_channel("yolo", channel)
     return response.json_data
 
-@app.route('/test', methods=['GET'])
+@app.route('/testing', methods=['GET'])
 async def process_test():
     print('processing test request')
     return "success"
