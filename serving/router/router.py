@@ -26,6 +26,7 @@ async def before_serving():
 
 @app.route('/yolo', methods=['POST'])
 async def process_yolo():
+    print("Got yolo request")
     global grpcServiceManager
     global service_lock
     files = await request.files
