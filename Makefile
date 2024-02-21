@@ -4,7 +4,7 @@ SERVICE_LIST = router yolo
 GPU_OPTIONS=--gpus all
 
 # env variables for use in typefly
-export IS_LOCAL_YOLO_SERVICE=true
+export IS_LOCAL_YOLO_SERVICE=false
 export OPENAI_API_KEY=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
 #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
 
