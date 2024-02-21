@@ -19,6 +19,6 @@ WORKDIR /workspace
 # generate the python files from the proto files
 RUN cd /workspace/proto && bash ./generate.sh
 #RUN python3 -m http.server 50050 --bind 0.0.0.0
-EXPOSE 8888
-#CMD ["python3", "./serving/yolo/yolo_service.py"]
-CMD ["python3", "-m", "http.server", "8888", "--bind", "0.0.0.0"]
+# EXPOSE 8888
+CMD ["python3", "./serving/yolo/yolo_service.py"]
+#CMD ["python3", "-m", "http.server", "8888", "--bind", "0.0.0.0"]

@@ -22,10 +22,11 @@ stop: validate_service
 start: validate_service
 	@make stop SERVICE=$(SERVICE)
 	@echo "=> Starting typefly-$(SERVICE)..."
-	docker run -td --privileged --ipc=host -p 8888:8888\
+	docker run -td --privileged --ipc=host -p 50049:50049\
 		--env-file ./docker/env.list \
     	--name="typefly-$(SERVICE)" typefly-$(SERVICE):0.1
 # -p 50050:50050 \
+# -p 8888:8888
 # --net=host
 
 remove: validate_service
