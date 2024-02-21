@@ -1,4 +1,3 @@
-# Credit: ashleykleynhans/llava-docker
 # Stage 1: Base
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
 
@@ -93,7 +92,7 @@ RUN source /venv/bin/activate && \
 # Download the default model
 ENV MODEL="liuhaotian/llava-v1.6-mistral-7b"
 ENV HF_HOME="/"
-COPY --chmod=755 scripts/download_models.py /download_models.py
+COPY --chmod=755 docker/llava/llava-docker/scripts/download_models.py /download_models.py
 RUN source /venv/bin/activate && \
     pip3 install huggingface_hub && \
     python3 /download_models.py && \
@@ -131,15 +130,15 @@ RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/scr
 RUN rm -f /etc/ssh/ssh_host_*
 
 # NGINX Proxy
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY nginx/502.html /usr/share/nginx/html/502.html
+COPY docker/llava/llava-docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/llava/llava-docker/nginx/502.html /usr/share/nginx/html/502.html
 
 # Set template version
 ENV TEMPLATE_VERSION=1.4.4
 
 # Copy the scripts
 WORKDIR /
-COPY --chmod=755 scripts/* ./
+COPY --chmod=755 docker/llava/llava-docker/scripts/* ./
 
 # Start the container
 SHELL ["/bin/bash", "--login", "-c"]

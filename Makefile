@@ -1,6 +1,6 @@
 .PHONY: stop, start, remove, open, build
 
-SERVICE_LIST = router yolo
+SERVICE_LIST = router yolo llava
 GPU_OPTIONS=--gpus all
 
 # env variables for use in typefly
@@ -22,10 +22,11 @@ stop: validate_service
 start: validate_service
 	@make stop SERVICE=$(SERVICE)
 	@echo "=> Starting typefly-$(SERVICE)..."
-	docker run -td --privileged --ipc=host -p 50049:50049\
+	docker run -td --privileged --ipc=host --net=host \
 		--env-file ./docker/env.list \
     	--name="typefly-$(SERVICE)" typefly-$(SERVICE):0.1
 # -p 50050:50050 \
+# -p 50049:50049
 # -p 8888:8888
 # --net=host
 
