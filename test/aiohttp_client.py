@@ -1,8 +1,15 @@
 import aiohttp
+from aiohttp_socks import ProxyConnector
 import json
 import asyncio
+import os
+
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print("Parent dir: ", PARENT_DIR)
+print("Contents: ", os.listdir(PARENT_DIR))
+
 async def detect():
-    image = open('../test/images/kitchen.webp', 'rb')
+    image = open(f"{PARENT_DIR}/test/images/kitchen.webp", 'rb')
     files = {
         'image': image,
         'json_data': json.dumps({'service': 'yolo'})
@@ -10,10 +17,18 @@ async def detect():
     print(files)
     async with aiohttp.ClientSession() as session:
         print("Sending request")
-        async with session.post("http://0.0.0.0:50048/yolo", data=files) as response:
+        async with session.post("http://0.0.0.0:50049/yolo", data=files) as response:
             content = await response.text()
             print("Received response")
             print(content)
 
+async def basic_hello():
+    connector = ProxyConnector.from_url('socks5://localhost:1080')
+    async with aiohttp.ClientSession(connector=connector) as session:
+        print("Sending test request...")
+        async with session.get("http://10.66.202.235:50049/test") as response:
+            content = await response.text()
+            print(f"Got Response: {content}")
+
 if __name__ == "__main__":
-    asyncio.run(detect())
+    asyncio.run(basic_hello())
