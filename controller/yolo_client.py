@@ -86,10 +86,10 @@ class YoloClient():
             'json_data': (None, json.dumps({'service': 'yolo', 'user_name': 'yolo', 'stream_mode': True, 'image_id': self.image_id}))
         }
 
-        print_t(f"[Y] Sending request to {self.service_url}")
+        #print_t(f"[Y] Sending request to {self.service_url}")
 
         response = requests.post(self.service_url, files=files)
-        print_t(f"[Y] Response: {response.text}")
+        #print_t(f"[Y] Response: {response.text}")
         json_results = json.loads(response.text)
         self.latest_result_with_image = (self.image_queue.get(), json_results)
         if self.shared_yolo_result is not None:
