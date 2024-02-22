@@ -14,6 +14,7 @@ class ServiceManager:
     def add_service(self, service_name, host, ports):
         self.services[service_name] = (host, ports.split(","))
         self.channel_queues[service_name] = asyncio.Queue()
+        print(f"Channels: {self.channel_queues}, services: {self.services}")
 
     async def _initialize_channels(self):
         if self.channels_initialized:
@@ -58,13 +59,13 @@ class ServiceManager:
         await self._initialize_channels()  # Ensure channels are initialized
 
         await self.clean_dedicated_channels()
-        
         if dedicated:
             # If there is no dedicated channel for this user, get one from the queue
             if user_name not in self.dedicated_channels:
                 # If there is no more channel in the queue, return None
                 if self.channel_queues[service_name].qsize() > 0:
                     self.dedicated_channels[user_name] = {service_name: (self.channel_queues[service_name].get_nowait(), time.time())}
+                    return self.dedicated_channels[user_name][service_name][0]
                 else:
                     return None
             # If there is a dedicated channel for this user, update time and return it
@@ -74,6 +75,5 @@ class ServiceManager:
         else:
             channel = await self.channel_queues[service_name].get()
             return channel
-
     async def release_service_channel(self, service_name, channel):
         await self.channel_queues[service_name].put(channel)
