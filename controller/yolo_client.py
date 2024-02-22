@@ -12,7 +12,7 @@ import threading
 from .utils import print_t
 
 VISION_SERVICE_IP = os.environ.get("VISION_SERVICE_IP", "localhost")
-ROUTER_SERVICE_PORT = os.environ.get("ROUTER_SERVICE_PORT", "50049")
+ROUTER_SERVICE_PORT = os.environ.get("ROUTER_SERVICE_PORT", "8888") #50049
 
 class SharedYoloResult():
     def __init__(self) -> None:
@@ -83,7 +83,7 @@ class YoloClient():
 
         files = {
             'image': ('image', image_bytes),
-            'json_data': (None, json.dumps({'user_name': 'yolo', 'stream_mode': True, 'image_id': self.image_id}))
+            'json_data': (None, json.dumps({'service': 'yolo', 'user_name': 'yolo', 'stream_mode': True, 'image_id': self.image_id}))
         }
 
         print_t(f"[Y] Sending request to {self.service_url}")
