@@ -17,7 +17,7 @@ async def detect():
     print(files)
     async with aiohttp.ClientSession() as session:
         print("Sending request")
-        async with session.post("http://0.0.0.0:50049/yolo", data=files) as response:
+        async with session.post("http://localhost:8888/yolo", data=files) as response:
             content = await response.text()
             print("Received response")
             print(content)
@@ -31,4 +31,4 @@ async def basic_hello():
             print(f"Got Response!!!: {content}")
 
 if __name__ == "__main__":
-    asyncio.run(basic_hello())
+    asyncio.run(detect())
