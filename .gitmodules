@@ -1,3 +1,6 @@
 [submodule "docker/llava/llava-docker"]
 	path = docker/llava/llava-docker
 	url = git@github.com:ashleykleynhans/llava-docker.git
+[submodule "serving/llava/LLaVA"]
+	path = serving/llava/LLaVA
+	url = git@github.com:haotian-liu/LLaVA.git
