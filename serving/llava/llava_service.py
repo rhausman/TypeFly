@@ -53,7 +53,7 @@ def release_model(model):
     gc.collect()
     torch.cuda.empty_cache()
 
-class LlavaService(hyrch_serving_pb2_grpc.YoloServiceServicer):
+class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
     def __init__(self, port):
         self.port = port
         self.tokenizer, self.model, self.image_processor, self.context_len = load_model()
@@ -61,6 +61,28 @@ class LlavaService(hyrch_serving_pb2_grpc.YoloServiceServicer):
     def reload_model(self):
         release_model(self.model)
         self.tokenizer, self.model, self.image_processor, self.context_len = load_model()
+    
+    # PromptRequest must contain image data for LLaVA
+    @staticmethod
+    def bytes_to_image(image_bytes):
+        return Image.open(BytesIO(image_bytes))
+    
+    """
+    Recieve a Percieve Request. request is a promptrequest, which contains a string and an image.
+    Returns: PromptResponse.
+    """
+    def Percieve(self, request, context):
+        print(f"Received Percieve request from {context.peer()} on port {self.port}, prompt: {request.json_data}")
+        prompt = request.json_data # maybe should rename this field to prompt or use the json with json.loads
+        if prompt is None or prompt == "":
+            print("No prompt provided. Returning empty response.")
+            return hyrch_serving_pb2.PromptResponse(json_data="No prompt provided. Continue completing the task.")
+        image = self.bytes_to_image(request.image)
+        #temperature = request.temperature
+        #max_new_tokens = request.max_new_tokens
+        # todo: use the model to make a prediction
+        raise NotImplementedError("Not implemented!")
+        return hyrch_serving_pb2.PromptResponse(json_data="Not implemented!")
       
 # TODO remove  
 tokenizer, model, image_processor, _ = load_model()

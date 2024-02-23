@@ -28,5 +28,5 @@ message PromptResponse {
 }
 
 service LlavaService {
-    rpc VisionRequest (PromptRequest) returns (PromptResponse) {}
+    rpc Percieve (PromptRequest) returns (PromptResponse) {}
 }
