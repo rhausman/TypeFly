@@ -143,3 +143,5 @@ COPY --chmod=755 docker/llava/llava-docker/scripts/* ./
 # Start the container
 SHELL ["/bin/bash", "--login", "-c"]
 CMD [ "/start.sh" ]
+#RUN /start.sh
+#CMD ["python", "-m", "llava.serve.api", "-H", "0.0.0.0", "-p", "5000"]
