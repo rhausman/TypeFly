@@ -63,85 +63,22 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python
 FROM base as setup
 
 # Create and use the Python venv
-RUN python3 -m venv /venv
+#RUN python3 -m venv /venv
 
 # Install Torch
-RUN source /venv/bin/activate && \
-    pip3 install --no-cache-dir torch==2.1.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
+#RUN source /venv/bin/activate && \
+RUN    pip3 install --no-cache-dir torch==2.1.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN pip3 install grpcio-tools transformers
+RUN pip3 install accelerate
 #    pip3 install --no-cache-dir xformers==0.0.22 && \
-    deactivate
+#deactivate
 
-# Clone the git repo of LLaVA and set version
-WORKDIR /
-RUN git clone https://github.com/ashleykleynhans/LLaVA.git && \
-    cd /LLaVA && \
-    git checkout ${LLAVA_COMMIT}
+COPY ../.. /workspace
+WORKDIR /workspace
+# Make sure the LLaVA source code can be accessed
+ENV PYTHONPATH "${PYTHONPATH}:/workspace/serving/llava/LLaVA"
 
-# Install the dependencies for LLaVA
-WORKDIR /LLaVA
-RUN source /venv/bin/activate && \
-    pip3 install --upgrade pip && \
-    pip3 install wheel && \
-    pip3 install -e . && \
-    pip3 install ninja && \
-    pip3 install flash-attn --no-build-isolation && \
-    pip3 install transformers==4.37.2 && \
-    pip3 install protobuf && \
-    deactivate
-
-# Download the default model
-ENV MODEL="liuhaotian/llava-v1.6-mistral-7b"
-ENV HF_HOME="/"
-COPY --chmod=755 docker/llava/llava-docker/scripts/download_models.py /download_models.py
-RUN source /venv/bin/activate && \
-    pip3 install huggingface_hub && \
-    python3 /download_models.py && \
-    deactivate
-
-# Install Jupyter, gdown and OhMyRunPod
-RUN pip3 install -U --no-cache-dir jupyterlab \
-        jupyterlab_widgets \
-        ipykernel \
-        ipywidgets \
-        gdown \
-        OhMyRunPod
-
-# Install RunPod File Uploader
-RUN curl -sSL https://github.com/kodxana/RunPod-FilleUploader/raw/main/scripts/installer.sh -o installer.sh && \
-    chmod +x installer.sh && \
-    ./installer.sh
-
-# Install rclone
-RUN curl https://rclone.org/install.sh | bash
-
-# Install runpodctl
-RUN wget https://github.com/runpod/runpodctl/releases/download/v1.13.0/runpodctl-linux-amd64 -O runpodctl && \
-    chmod a+x runpodctl && \
-    mv runpodctl /usr/local/bin
-
-# Install croc
-RUN curl https://getcroc.schollz.com | bash
-
-# Install speedtest CLI
-RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash && \
-    apt -y install speedtest
-
-# Remove existing SSH host keys
-RUN rm -f /etc/ssh/ssh_host_*
-
-# NGINX Proxy
-COPY docker/llava/llava-docker/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY docker/llava/llava-docker/nginx/502.html /usr/share/nginx/html/502.html
-
-# Set template version
-ENV TEMPLATE_VERSION=1.4.4
-
-# Copy the scripts
-WORKDIR /
-COPY --chmod=755 docker/llava/llava-docker/scripts/* ./
-
-# Start the container
-SHELL ["/bin/bash", "--login", "-c"]
-CMD [ "/start.sh" ]
-#RUN /start.sh
-#CMD ["python", "-m", "llava.serve.api", "-H", "0.0.0.0", "-p", "5000"]
+# generate the python files from the proto files
+RUN cd /workspace/proto && bash ./generate.sh
+# run the llava service
+CMD ["python3", "./serving/llava/llava_service.py"]
