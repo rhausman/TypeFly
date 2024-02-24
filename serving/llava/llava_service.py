@@ -9,7 +9,7 @@ from transformers.generation.streamers import TextStreamer, TextIteratorStreamer
 sys.path.append(os.path.normpath(os.path.join(os.path.abspath(__file__), "..", "LLaVA")))
 
 from llava.model.builder import load_pretrained_model
-from llava.converstion import conv_templates
+from llava.conversation import conv_templates
 from llava.mm_utils import process_images, tokenizer_image_token
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
@@ -21,7 +21,7 @@ CONV_MODE = os.environ.get("CONV_MODE", "mistral_instruct")
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT_PATH = os.environ.get("ROOT_PATH", PARENT_DIR)
 CWD = os.getcwd()
-SERVICE_PORT = os.environ.get("LLAVA_SERVICE_PORT", "50058, 50059").split(",")
+SERVICE_PORT = os.environ.get("LLAVA_SERVICE_PORT", "5000") # .split(",")
 
 sys.path.append(ROOT_PATH)
 sys.path.append(os.path.join(ROOT_PATH, "proto/generated"))
@@ -142,7 +142,8 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
     """
     def Percieve(self, request, context):
         print(f"Received Percieve request from {context.peer()} on port {self.port}, prompt: {request.json_data}")
-        prompt = request.json_data # maybe should rename this field to prompt or use the json with json.loads
+        json_payload = json.loads(request.json_data) # maybe should rename this field to prompt or use the json with json.loads
+        prompt = json_payload.get('prompt', None)
         if prompt is None or prompt == "":
             print("No prompt provided. Returning empty response.")
             return hyrch_serving_pb2.PromptResponse(json_data="No prompt provided. Continue completing the task.")
@@ -169,5 +170,13 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
         return hyrch_serving_pb2.PromptResponse(json_data= json.dumps({"response": response}) )
       
 # TODO remove  
-tokenizer, model, image_processor, _ = load_model()
-release_model(model)
+#tokenizer, model, image_processor, _ = load_model()
+#release_model(model)
+
+if __name__ == "__main__":
+    print(f"Starting YoloService at port {SERVICE_PORT}")
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    hyrch_serving_pb2_grpc.add_LlavaServiceServicer_to_server(LlavaService(SERVICE_PORT), server)
+    server.add_insecure_port(f'[::]:{port}')
+    server.start()
+    server.wait_for_termination()
