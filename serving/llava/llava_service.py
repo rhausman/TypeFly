@@ -177,6 +177,6 @@ if __name__ == "__main__":
     print(f"Starting YoloService at port {SERVICE_PORT}")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     hyrch_serving_pb2_grpc.add_LlavaServiceServicer_to_server(LlavaService(SERVICE_PORT), server)
-    server.add_insecure_port(f'[::]:{port}')
+    server.add_insecure_port(f'[::]:{SERVICE_PORT}')
     server.start()
     server.wait_for_termination()

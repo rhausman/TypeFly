@@ -1,8 +1,11 @@
-import json
+import json, sys, os
 import time
 import requests
 import base64
 from PIL import Image
+sys.path.append("..")
+sys.path.append("./controller")
+print(os.getcwd())
 from controller.llava_client import LlavaClient
 
 
@@ -28,9 +31,10 @@ def encode_image_to_base64(image_path):
 
 
 if __name__ == '__main__':
+    print("Running test...")
     client = LlavaClient()
     
-    image = Image.open('images/kitchen.webp', 'rb')
+    image = Image.open('images/kitchen.webp')
 
     client.percieve_local(image, 'What is in the image?')
     #timer = Timer()

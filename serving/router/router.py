@@ -72,8 +72,8 @@ async def process_llava():
     form = await request.form
     image_data = files.get('image')
     json_str = form.get('json_data')
-
-    print(f"Received request with json_data: {json_str}, and img data: {image_data}")
+    print(f"Files: {files}")
+    print(f"Received request with json_data: {json_str}, and img data: {image_data} and files: {files}")
 
     if not json_str:
         return "No JSON data provided", 400

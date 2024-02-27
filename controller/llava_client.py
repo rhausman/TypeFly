@@ -10,6 +10,7 @@ Access the Llava Service through http. Similar to YoLoClient.
 """
 class LlavaClient: 
     def __init__(self):
+        print("init llava client")
         self.service_url = f"http://{VISION_SERVICE_IP}:{ROUTER_SERVICE_PORT}/llava"
     
     def image_to_bytes(image):
@@ -21,10 +22,13 @@ class LlavaClient:
     def percieve_local(self, image, prompt):
         # send the image and prompt to the Llava service
         image_bytes = LlavaClient.image_to_bytes(image)
+        print(f"percieve local processing. image: {image}, bytes: {image_bytes[:5]}")
         # Make a PromptRequest
         files = {
-            'json_data': json.dumps( {"prompt": prompt}),
-            'image': image_bytes
+            'image': ('image', image_bytes),
+            'json_data': (None, json.dumps( {"prompt": prompt, 'service': 'llava', 'user_name': 'llava'}))
         }
+        #print(f"files: {files}")
         r = requests.post(self.service_url, data=files)
-        return json.loads(r)
+        print(f"Got {type(r)}: {r.text}")
+        return json.loads(r.text)

@@ -56,9 +56,12 @@ class ServiceManager:
                     del self.dedicated_channels[user]
 
     async def get_service_channel(self, service_name, dedicated=False, user_name=None):
+        print("Get service channel start")
         await self._initialize_channels()  # Ensure channels are initialized
 
         await self.clean_dedicated_channels()
+        print(f"Getting {service_name} service channel. Dedicated: {dedicated}, user: {user_name}")
+        print(f"Channels: {self.channel_queues}, services: {self.services}, dedicated_channels: {self.dedicated_channels}")
         if dedicated:
             # If there is no dedicated channel for this user, get one from the queue
             if user_name not in self.dedicated_channels:
@@ -73,6 +76,7 @@ class ServiceManager:
                 self.dedicated_channels[user_name][service_name] = (self.dedicated_channels[user_name][service_name][0], time.time())
                 return self.dedicated_channels[user_name][service_name][0]
         else:
+            print("Not dedicated, getting from queue")
             channel = await self.channel_queues[service_name].get()
             return channel
     async def release_service_channel(self, service_name, channel):
