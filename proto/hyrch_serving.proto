@@ -20,7 +20,7 @@ service Llama2Service {
 
 message PromptRequest {
     string json_data = 1; // prompt
-    optional bytes image_data = 2; // Encoded image data
+    bytes image_data = 2; // Encoded image data
 }
 
 message PromptResponse {
