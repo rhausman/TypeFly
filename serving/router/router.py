@@ -35,7 +35,7 @@ async def process_yolo():
     image_data = files.get('image')
     json_str = form.get('json_data')
 
-    print(f"Received request with json_data: {json_str}")
+    print(f"Received request with json_data: {json_str} and files: {files}")
 
     if not json_str:
         return "No JSON data provided", 400
@@ -61,6 +61,40 @@ async def process_yolo():
     finally:
         if not stream_mode:
             await grpcServiceManager.release_service_channel("yolo", channel)
+    return response.json_data
+
+@app.route('/llava', methods=['POST'])
+async def process_llava():
+    print("Got llava request")
+    global grpcServiceManager
+    global service_lock
+    files = await request.files
+    form = await request.form
+    image_data = files.get('image')
+    json_str = form.get('json_data')
+
+    print(f"Received request with json_data: {json_str}, and img data: {image_data}")
+
+    if not json_str:
+        return "No JSON data provided", 400
+    
+    if not image_data:
+        return "No image provided", 400
+    
+    json_data = json.loads(json_str)
+    prompt = json_data.get("prompt", None)
+    print("Getting service lock")
+    async with service_lock:
+        channel = await grpcServiceManager.get_service_channel("llava", dedicated=False, user_name="user")
+    print("Got service lock, attempting request")
+    try:
+        stub = hyrch_serving_pb2_grpc.LlavaServiceStub(channel)
+        image_contents = image_data.read()
+        print("Sending request to llava")
+        response = stub.Percieve(hyrch_serving_pb2.PromptRequest(prompt=prompt, image_data=image_contents))
+    finally:
+        await grpcServiceManager.release_service_channel("llava", channel)
+    print("Done response from llava")
     return response.json_data
 
 @app.route('/testing', methods=['GET'])
