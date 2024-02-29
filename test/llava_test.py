@@ -35,7 +35,8 @@ if __name__ == '__main__':
     client = LlavaClient()
     
     image = Image.open('images/kitchen.webp')
-
-    result = client.percieve_local(image, 'What is in the image?')
-    print(result)
+    prompt = 'What is in the image?'
+    result = client.percieve_local(image, prompt)
+    response = result.get('response')
+    print(f"Asked \'{prompt}\', got response: \'{response}\'")
     #timer = Timer()

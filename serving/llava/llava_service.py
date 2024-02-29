@@ -85,7 +85,7 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
     @staticmethod
     def format_outputs(outputs):
         # Replace special tokens etc and join the outputs
-        print(f"formatting outputs...")
+        print(f"formatting outputs... {type(outputs)}")
         out_list = []
         for output in outputs:
             print(f"output: {type(output)}, {output.__dict__}")
@@ -113,8 +113,8 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
             print(f"Image tensor is a list, converting to tensor...")
             image_tensor = [t.to(self.model.device, dtype=torch.float16) for t in image_tensor]
         else:
-            image_tensor = image_tensor.to(self.model.device) #, dtype=torch.float32)
-            
+            image_tensor = image_tensor.to(self.model.device, dtype=torch.float16) #, dtype=torch.float32)
+        print(f"New image tensor dtype: {image_tensor.dtype}")
         if image is not None:
             # first message
             if self.model.config.mm_use_im_start_end:
@@ -131,8 +131,9 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
         input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.model.device)
         # text streaming mode not allowed because there would be no point
         # we may want to include it later to allow the control module to interrupt a llava response
+        print("making streamer...")
         streamer = TextStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-
+        print("generating wrapper in inference mode...")
         with torch.inference_mode():
             output_ids = self.generate_wrapper(
                 input_ids,
@@ -144,9 +145,13 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
             )
 
         # Decode the tensor to string
+        print("decoding...")
         outputs = self.tokenizer.decode(output_ids[0]).strip()
+        print(f"decoded: {outputs}")
         conv.messages[-1][-1] = outputs
-        yield outputs
+        print(f"Appended message to the conversation!")
+        #yield outputs
+        return outputs
     
     def generate_wrapper(self, input_ids, image_tensor, image_size, temperature, max_new_tokens, streamer):
         return self.model.generate(
@@ -194,8 +199,9 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
         # Get a generator, loop through it
         print("Running inference....")
         outputs = self.run_inference(data)
-        print("Formatting output...")
-        response = LlavaService.format_outputs(outputs)
+        print(f"Formatting output... type: {type(outputs)}")
+        #response = LlavaService.format_outputs(outputs)
+        response = outputs
         print(f"Returning response: {response[:100]}...")
         return hyrch_serving_pb2.PromptResponse(json_data= json.dumps({"response": response}) )
       

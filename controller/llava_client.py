@@ -28,7 +28,5 @@ class LlavaClient:
             'image': ('image', image_bytes),
             'json_data': (None, json.dumps( {"prompt": prompt, 'service': 'llava', 'user_name': 'llava'}))
         }
-        #print(f"files: {files}")
         r = requests.post(self.service_url, files=files)
-        print(f"Got {type(r)}: {r.text}")
         return json.loads(r.text)
