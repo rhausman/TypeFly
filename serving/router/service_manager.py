@@ -76,8 +76,9 @@ class ServiceManager:
                 self.dedicated_channels[user_name][service_name] = (self.dedicated_channels[user_name][service_name][0], time.time())
                 return self.dedicated_channels[user_name][service_name][0]
         else:
-            print("Not dedicated, getting from queue")
+            print("Not dedicated, getting from queue...", end=" ")
             channel = await self.channel_queues[service_name].get()
+            print(f"Got channel: {channel}")
             return channel
     async def release_service_channel(self, service_name, channel):
         await self.channel_queues[service_name].put(channel)

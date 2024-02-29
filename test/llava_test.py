@@ -36,5 +36,6 @@ if __name__ == '__main__':
     
     image = Image.open('images/kitchen.webp')
 
-    client.percieve_local(image, 'What is in the image?')
+    result = client.percieve_local(image, 'What is in the image?')
+    print(result)
     #timer = Timer()

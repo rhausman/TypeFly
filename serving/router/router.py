@@ -90,11 +90,11 @@ async def process_llava():
     try:
         stub = hyrch_serving_pb2_grpc.LlavaServiceStub(channel)
         image_contents = image_data.read()
-        print("Sending request to llava")
-        response = stub.Percieve(hyrch_serving_pb2.PromptRequest(prompt=prompt, image_data=image_contents))
+        print(f"Sending request to llava. json_data={json_data}, image_data={image_contents[:5]}...")
+        response = await stub.Percieve(hyrch_serving_pb2.PromptRequest(json_data=json.dumps(json_data), image_data=image_contents))
     finally:
         await grpcServiceManager.release_service_channel("llava", channel)
-    print("Done response from llava")
+    print(f"Done response from llava: {response}, contents: {response.json_data}")
     return response.json_data
 
 @app.route('/testing', methods=['GET'])
