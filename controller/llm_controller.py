@@ -3,6 +3,7 @@ import queue, time, os, json
 from typing import Optional
 import asyncio
 import uuid
+from typing import Union
 
 from .yolo_client import YoloClient, SharedYoloResult
 from .yolo_grpc_client import YoloGRPCClient
@@ -14,6 +15,7 @@ from .llm_planner import LLMPlanner
 from .skillset import SkillSet, LowLevelSkillItem, HighLevelSkillItem, SkillArg
 from .utils import print_t, input_t
 from .minispec_interpreter import MiniSpecInterpreter
+from .llava_client import LlavaClient
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -26,6 +28,12 @@ class LLMController():
         else:
             self.yolo_client = YoloGRPCClient(shared_yolo_result=self.shared_yolo_result)
         self.vision = VisionSkillWrapper(self.shared_yolo_result)
+        
+        # Establish connection to LLaVA Service
+        if use_http:
+            self.llava_client = LlavaClient()
+        else: 
+            raise NotImplementedError("LLaVA gRPC client is not implemented yet")
         self.latest_frame = None
         self.controller_state = True
         self.controller_wait_takeoff = True
@@ -66,7 +74,7 @@ class LLMController():
         self.low_level_skillset.add_skill(LowLevelSkillItem("log", self.log, "Output text to console", args=[SkillArg("text", str)]))
         self.low_level_skillset.add_skill(LowLevelSkillItem("picture", self.picture, "Take a picture"))
         self.low_level_skillset.add_skill(LowLevelSkillItem("query", self.planner.request_execution, "Query the LLM for reasoning", args=[SkillArg("question", str)]))
-        self.low_level_skillset.add_skill(LowLevelSkillItem("llava", self.planner.request_execution, "Query LLaVA for reasoning", args=[SkillArg("question", str)]))
+        self.low_level_skillset.add_skill(LowLevelSkillItem("llava", self.request_llava_query, "Query LLaVA for reasoning", args=[SkillArg("question", str)]))
 
         # load high-level skills
         self.high_level_skillset = SkillSet(level="high", lower_level_skillset=self.low_level_skillset)
@@ -79,6 +87,17 @@ class LLMController():
         MiniSpecInterpreter.high_level_skillset = self.high_level_skillset
         self.planner.init(high_level_skillset=self.high_level_skillset, low_level_skillset=self.low_level_skillset, vision_skill=self.vision)
 
+    # Make a call to llava. We could have this return different types of values, such as a quantity,etc.
+    # For now it will just return text TODO: make it return different types of values
+    def request_llava_query(self, question: str) -> Union[bool, str, int, float]: 
+        # 1. Get a picture
+        frame = Image.fromarray(self.latest_frame)
+        # 2. Use the llava client to query...
+        # if self.llava_client.is_local_service(): # use local otherwise don't TODO
+        result = self.llava_client.percieve_local(frame, question)
+        # 3. Return the result
+        return result.get('response')
+        
     def picture(self):
         img_path = os.path.join(self.cache_folder, f"{uuid.uuid4()}.jpg")
         Image.fromarray(self.latest_frame).save(img_path)

@@ -12,6 +12,8 @@ class LlavaClient:
     def __init__(self):
         print("init llava client")
         self.service_url = f"http://{VISION_SERVICE_IP}:{ROUTER_SERVICE_PORT}/llava"
+        # TODO: have llava client ping at startup to test if the service is available, 
+        # and if not don't have it available as a skill?
     
     def image_to_bytes(image):
         # compress and convert the image to bytes
