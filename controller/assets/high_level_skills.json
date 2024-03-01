@@ -18,12 +18,5 @@
         "skill_name": "orienting",
         "skill_description": "Rotate to align with a certain object",
         "definition": "4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False"
-    },
-    /*
-    {
-        "skill_name": "consult_llava",
-        "skill_description" : "Consult the LLaVA Service to answer a question about the scene or request information",
-        "definition": ""
     }
-    */
 ]
