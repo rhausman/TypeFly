@@ -74,7 +74,7 @@ class LLMController():
         self.low_level_skillset.add_skill(LowLevelSkillItem("log", self.log, "Output text to console", args=[SkillArg("text", str)]))
         self.low_level_skillset.add_skill(LowLevelSkillItem("picture", self.picture, "Take a picture"))
         self.low_level_skillset.add_skill(LowLevelSkillItem("query", self.planner.request_execution, "Query the LLM for reasoning", args=[SkillArg("question", str)]))
-        self.low_level_skillset.add_skill(LowLevelSkillItem("llava", self.request_llava_query, "Query LLaVA for reasoning", args=[SkillArg("question", str)]))
+        self.low_level_skillset.add_skill(LowLevelSkillItem("llava_request", self.request_llava_query, "Query LLaVA for visual description, reasoning, and more", args=[SkillArg("question", str)]))
 
         # load high-level skills
         self.high_level_skillset = SkillSet(level="high", lower_level_skillset=self.low_level_skillset)
@@ -95,6 +95,8 @@ class LLMController():
         # 2. Use the llava client to query...
         # if self.llava_client.is_local_service(): # use local otherwise don't TODO
         result = self.llava_client.percieve_local(frame, question)
+        # TODO: 1. Do a re-planning stage based on the output from this!
+        # TODO: 2. have GPT-4 interpret the output from LLaVA and simplify it or use it for planning
         # 3. Return the result
         return result.get('response')
         
