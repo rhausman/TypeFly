@@ -4,6 +4,7 @@ from typing import Optional
 import asyncio
 import uuid
 from typing import Union
+from traceback import format_tb
 
 from .yolo_client import YoloClient, SharedYoloResult
 from .yolo_grpc_client import YoloGRPCClient
@@ -149,11 +150,12 @@ class LLMController():
             try:
                 self.execute_minispec(result)
             except Exception as e:
-                self.append_message(f'[ERROR]: Minispec execution error: {e}')
-                print_t(f"[C] Minispec execution error: {e}")
+                _tb = format_tb(e.__traceback__)
+                self.append_message(f'[ERROR]: Minispec execution error: {e}.')
+                print_t(f"[C] Minispec execution error: {e}\n---- TRACEBACK: {_tb}")
                 # log to the chat log
                 with open(chat_log_path, "a") as ff: 
-                    ff.write(f"\n------------- MINISPEC ERROR -------------\nOriginal Minispec: {result}\n----\nError:{e}\n----------------------------------\n")  
+                    ff.write(f"\n------------- MINISPEC ERROR -------------\nOriginal Minispec: {result}\n----\nError:{e}\n\nTRACEBACK: {_tb}\n----------------------------------\n")  
                     
         self.append_message('Task complete!')
         self.append_message('end')
