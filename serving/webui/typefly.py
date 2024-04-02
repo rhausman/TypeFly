@@ -102,7 +102,7 @@ class TypeFly:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_virtual_cam', action='store_true')
+    parser.add_argument('--use_virtual_cam', action='store_false')
     parser.add_argument('--use_http', action='store_true')
     args = parser.parse_args()
     typefly = TypeFly(use_virtual_cam=args.use_virtual_cam, use_http=args.use_http)
