@@ -16,6 +16,7 @@ from .skillset import SkillSet, LowLevelSkillItem, HighLevelSkillItem, SkillArg
 from .utils import print_t, input_t
 from .minispec_interpreter import MiniSpecInterpreter
 from .llava_client import LlavaClient
+from .llm_wrapper import chat_log_path
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,7 +98,10 @@ class LLMController():
         result = self.llava_client.percieve_local(frame, question)
         # TODO: 1. Do a re-planning stage based on the output from this!
         # TODO: 2. have GPT-4 interpret the output from LLaVA and simplify it or use it for planning
-        # 3. Return the result
+        # 3. Log and return the result
+        with open(chat_log_path, "a") as ff:
+            ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {question}\n\n")
+            ff.write(f"Response: {result.get('response')}\n----------------------------------\n")
         return result.get('response')
         
     def picture(self):
@@ -142,7 +146,15 @@ class LLMController():
             # if consent == 'n':
             #     print_t("[C] > Plan rejected <")
             #     return
-            self.execute_minispec(result)
+            try:
+                self.execute_minispec(result)
+            except Exception as e:
+                self.append_message(f'[ERROR]: Minispec execution error: {e}')
+                print_t(f"[C] Minispec execution error: {e}")
+                # log to the chat log
+                with open(chat_log_path, "a") as ff: 
+                    ff.write(f"\n------------- MINISPEC ERROR -------------\nOriginal Minispec: {result}\n----\nError:{e}\n----------------------------------\n")  
+                    
         self.append_message('Task complete!')
         self.append_message('end')
 
