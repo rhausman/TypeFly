@@ -7,7 +7,7 @@
 <conditional> ::= '?' <condition> '{' <program> '}'
 <return> ::= '->' <value>
 <condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
-<comparator> ::= '>' | '<' | '==' | '!='
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
 <function-name> ::= <alpha> { <alpha> }
 <argument> ::= <literal-value> { ',' <literal-value> }
 <variable> ::= '_' <int>
