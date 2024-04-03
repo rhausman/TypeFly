@@ -100,7 +100,7 @@ class MiniSpecInterpreter:
         if '|' in condition:
             conditions = condition.split('|')
             return any(map(self.evaluate_condition, conditions))
-        var, comparator, value = re.match(r'(_\d+)\s*(==|!=|<|>)\s*(.+)', condition).groups()
+        var, comparator, value = re.match(r'(_\d+)\s*(==|!=|<|>|/)\s*(.+)', condition).groups()
         var_value = self.get_env_value(var)
         if comparator == '>':
             return var_value > evaluate_value(value)
@@ -110,7 +110,15 @@ class MiniSpecInterpreter:
             return var_value == evaluate_value(value)
         elif comparator == '!=':
             return var_value != evaluate_value(value)
-
+        elif comparator == '/':
+            lvalue = var_value
+            rvalue = evaluate_value(value)
+            print(f"Parsed vals for 'in': {lvalue}, {comparator}, {rvalue}")
+            if not isinstance(lvalue, str) or not isinstance(rvalue, str):
+                raise Exception(f"Invalid operands for 'in' operator. Expected strings but got {type(lvalue)} and {type(rvalue)}")
+            else:
+                # TODO consider reversing, making it a 'is substring of' operator instead of 'has substring'
+                return rvalue in lvalue
     def call_function(self, func):
         name, args = re.match(r'(\w+)(?:,(.+))?', func).groups()
         if args:
