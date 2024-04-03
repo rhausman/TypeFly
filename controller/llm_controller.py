@@ -97,13 +97,14 @@ class LLMController():
         # 2. Use the llava client to query...
         # if self.llava_client.is_local_service(): # use local otherwise don't TODO
         result = self.llava_client.percieve_local(frame, question)
+        result_text = result.get('response').lower()
         # TODO: 1. Do a re-planning stage based on the output from this!
         # TODO: 2. have GPT-4 interpret the output from LLaVA and simplify it or use it for planning
         # 3. Log and return the result
         with open(chat_log_path, "a") as ff:
             ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {question}\n\n")
-            ff.write(f"Response: {result.get('response')}\n----------------------------------\n")
-        return result.get('response')
+            ff.write(f"Response: {result_text}\n----------------------------------\n")
+        return result_text
         
     def picture(self):
         img_path = os.path.join(self.cache_folder, f"{uuid.uuid4()}.jpg")
