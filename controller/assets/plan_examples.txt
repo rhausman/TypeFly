@@ -36,8 +36,8 @@ Example 9:
     reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
 Example 10:
     scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find a trampoline in the area.
-    response:_1=lr,"Does the scene contain a trampoline? If so, where?";?_1/"trampoline" | ?_1/"yes" {-> a} d,1000}->False
-    reason:Trampolines are unusual objects, so we specifically query LLaVA to check if the scene/one. If the response/"trampoline" or "yes", we approach it. If not, we wait for a short duration and repeat the process, ensuring a thorough search for the trampoline.
+    response:8{_1=lr,"Does the frame contain a trampoline? Answer only 'yes' or 'no'";?_1/yes{->True}tc,45}->False
+    reason:Trampolines are unusual objects, so we specifically query LLaVA to check if the scene/one. We run a loop, checking each time if llava says that there's a trampoline visible. If so, we return True (success). Otherwise, we turn 45 degrees and repeat the loop. If we've turned in a full circle without finding a trampoline, we return False (failure)
 Example 11:
     scene:[door_1, chair_1, table_1],task:[A] Leave the room.
     response:8{_1=lr,"Is the door open?";?_1/"yes" {-> o,door};?_1/"no" {_2=lr,"Can the drone fit through the door?";?_2/"yes" {-> o,door};?_2/"no" {_3=lr,"Is the drone on course for collision?";?_3/"yes" {-> tc,30};?_3/"no" {-> tu,30}}}}->False
