@@ -32,13 +32,13 @@ Example 8:
     reason:The task is too vague, so we use log to output the advice
 Example 9:
     scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
-    response:_1=lr,"Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'";?_1/person_1{o,person_1;a}?_1/"person_2"{o,person_2;a}->False
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
     reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
 Example 10:
-    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find a trampoline in the area.
-    response:8{_1=lr,"Does the frame contain a trampoline? Answer only 'yes' or 'no'";?_1/yes{->True}tc,45}->False
-    reason:Trampolines are unusual objects, so we specifically query LLaVA to check if the scene/one. We run a loop, checking each time if llava says that there's a trampoline visible. If so, we return True (success). Otherwise, we turn 45 degrees and repeat the loop. If we've turned in a full circle without finding a trampoline, we return False (failure)
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'",'yes';?_1!=False{a}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
 Example 11:
     scene:[door_1, chair_1, table_1],task:[A] Leave the room.
-    response:8{_1=lr,"Is the door open?";?_1/"yes" {-> o,door};?_1/"no" {_2=lr,"Can the drone fit through the door?";?_2/"yes" {-> o,door};?_2/"no" {_3=lr,"Is the drone on course for collision?";?_3/"yes" {-> tc,30};?_3/"no" {-> tu,30}}}}->False
+    response:8{_1=lr,"Is the door open?";?_1/yes {-> o,door};?_1/no {_2=lr,'Can the drone fit through the door?';?_2/yes {-> o,door};?_2/no {_3=lr,'Is the drone on course for collision?';?_3/yes {-> tc,30};?_3/no {-> tu,30}}}}->False
     reason:To leave the room, the drone navigates to the door. We first check if the door is open. If it is, we approach it. If not, we check if the drone can fit through the door. If it can, we approach the door. If not, we check if the drone is on course for collision. If it is, we turn clockwise by 30 degrees. If not, we turn counterclockwise by 30 degrees. This loop ensures a systematic approach to navigating towards the door, considering various obstacles and conditions.
