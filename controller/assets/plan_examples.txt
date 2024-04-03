@@ -8,7 +8,7 @@ Example 2:
     reason:there is an apple instance in the scene, so we orienting and approach the apple_5
 Example 3:
     scene:[apple_3],task:[Q] Is there an apple on your left?
-    response:tu,90;_1=iv,apple;?_1==True{->l,'Yes';->True}l,'No';->False
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
     reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
 Example 4:
     scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
