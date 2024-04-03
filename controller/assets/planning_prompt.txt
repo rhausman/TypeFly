@@ -7,7 +7,7 @@ Note the special low-level skill called 'llava_request', which lets you query a 
 The BNF syntax definition of 'MiniSpec' is as follows:
 {minispec_syntax}
 
-Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a.
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
 
 Description of the two skill sets:
 - High-level skills:
