@@ -42,7 +42,3 @@ Example 11:
     scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
     response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
     reason:
-Example 12:
-    scene:[door_1, chair_1, table_1],task:[A] Leave the room.
-    response:8{_1=lr,"Is the door open?";?_1/yes {-> o,door};?_1/no {_2=lr,'Can the drone fit through the door?';?_2/yes {-> o,door};?_2/no {_3=lr,'Is the drone on course for collision?';?_3/yes {-> tc,30};?_3/no {-> tu,30}}}}->False
-    reason:To leave the room, the drone navigates to the door. We first check if the door is open. If it is, we approach it. If not, we check if the drone can fit through the door. If it can, we approach the door. If not, we check if the drone is on course for collision. If it is, we turn clockwise by 30 degrees. If not, we turn counterclockwise by 30 degrees. This loop ensures a systematic approach to navigating towards the door, considering various obstacles and conditions.
