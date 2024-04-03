@@ -18,5 +18,22 @@
         "skill_name": "orienting",
         "skill_description": "Rotate to align with a certain object",
         "definition": "4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False"
+    },
+    {
+        "skill_name": "sweeping_llava",
+        "skill_description": "Rotate, consult LLaVA at each step, and check for a specific substring in its output",
+        "definition": "8{_1=lr,$1;?_1/$2{->True}tc,45}->False",
+        "args": [
+            {
+                "name": "question", 
+                "description": "The question to ask LLaVA at each turn",
+                "type": "str"
+            },
+            {
+                "name": "substring",
+                "description": "The substring to look for in LLaVA's output",
+                "type": "str"
+            }
+        ]
     }
 ]

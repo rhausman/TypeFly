@@ -87,17 +87,23 @@ class LowLevelSkillItem(SkillItem):
 
 class HighLevelSkillItem(SkillItem):
     def __init__(self, skill_name: str, definition: str,
-                 skill_description: str = ""):
+                 skill_description: str = "", args=[]):
         self.skill_name = skill_name
         self.abbr = self.generate_abbreviation(skill_name)
         self.abbr_dict[self.abbr] = skill_name
         self.definition = definition
         self.skill_description = skill_description
         self.low_level_skillset = None
-        self.args = []
+        self.args = args
 
     def load_from_dict(skill_dict: dict):
-        return HighLevelSkillItem(skill_dict["skill_name"], skill_dict["definition"], skill_dict["skill_description"])
+        args = []
+        # If the argument list is explicitly defined, loop through them and construct SkillArg objects
+        if "args" in skill_dict:
+            for arg in skill_dict["args"]:
+                _type = eval(arg["type"])
+                args.append(SkillArg(arg["name"], _type))
+        return HighLevelSkillItem(skill_dict["skill_name"], skill_dict["definition"], skill_dict["skill_description"], args)
 
     def get_name(self) -> str:
         return self.skill_name
@@ -110,7 +116,9 @@ class HighLevelSkillItem(SkillItem):
 
     def set_low_level_skillset(self, low_level_skillset: SkillSet):
         self.low_level_skillset = low_level_skillset
-        self.args = self.generate_argument_list()
+        # If arg list has been pre-defined, use it. Otherwise, generate it from the skills.
+        if self.args==[]:
+            self.args = self.generate_argument_list()
 
     def generate_argument_list(self) -> [SkillArg]:
         # Extract all skill calls with their arguments from the code
@@ -127,7 +135,6 @@ class HighLevelSkillItem(SkillItem):
                 if arg.startswith('$') and arg not in arg_types:
                     # Match the positional argument with its type from the function definition
                     arg_types[arg] = function_args[i]
-
         # Convert the mapped arguments to a user-friendly list in order of $position
         arg_types = dict(sorted(arg_types.items()))
         # print(arg_types)
