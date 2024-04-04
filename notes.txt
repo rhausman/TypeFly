@@ -1,5 +1,0 @@
-
-TODO
-1. Set up remote YOLO service (+router?)
-2. Use with local camera
-3. Set up another service, "fine-vision"
