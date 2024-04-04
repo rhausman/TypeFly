@@ -41,4 +41,4 @@ Example 10:
 Example 11:
     scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
     response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
-    reason:
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
