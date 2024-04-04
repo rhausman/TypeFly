@@ -111,186 +111,42 @@ None
 
 Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
 'scene description':
-[person_94 x:0.72 y:0.31 width:0.16 height:0.49 color:darkslategray, chair_95 x:0.63 y:0.59 width:0.12 height:0.55 color:darkolivegreen, person_96 x:0.84 y:0.56 width:0.32 height:0.87 color:darkslategray]
+[cup_1 x:0.35 y:0.32 width:0.09 height:0.19 color:lightslategray, refrigerator_5 x:0.97 y:0.5 width:0.07 height:1.0 color:darkolivegreen, dining table_7 x:0.17 y:0.73 width:0.35 height:0.51 color:darkslategray, microwave_15 x:0.69 y:0.34 width:0.25 height:0.25 color:darkslategray]
 'task description':
-[A] Move forward a little bit
+[Q] How many GPU units are to your left?
 'response':
 ---
 {
-  "id": "chatcmpl-9ALfQmDIUrgW2E3QwPa5YpMNrszNH",
+  "id": "chatcmpl-9ALx8VWiL4IpuajFlPkxaeTQK59aU",
   "choices": [
     {
       "finish_reason": "stop",
       "index": 0,
       "logprobs": null,
       "message": {
-        "content": "mf,10",
+        "content": "tu,90;_1=lr,'How many GPU units are there? Output only a number.';l,_1",
         "role": "assistant",
         "function_call": null,
         "tool_calls": null
       }
     }
   ],
-  "created": 1712253596,
+  "created": 1712254694,
   "model": "gpt-4-0613",
   "object": "chat.completion",
   "system_fingerprint": null,
   "usage": {
-    "completion_tokens": 3,
-    "prompt_tokens": 2894,
-    "total_tokens": 2897
-  }
-}
----
-You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
-Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
-The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
-Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
-'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," etc.
-
-The BNF syntax definition of 'MiniSpec' is as follows:
-<program> ::= { <block-statement> [';'] | <statement> ';' }
-<statement> ::= <variable-assign> | <function-call> | <return>
-<block-statement> ::= <loop> | <conditional>
-<loop> ::= <int> '{' <program> '}'
-<function-call> ::= <function-name> { ',' <argument> }
-<variable-assign> ::= <variable> '=' <function-call>
-<conditional> ::= '?' <condition> '{' <program> '}'
-<return> ::= '->' <value>
-<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
-<comparator> ::= '>' | '<' | '==' | '!=' | '/'
-<function-name> ::= <alpha> { <alpha> }
-<argument> ::= <literal-value> { ',' <literal-value> }
-<variable> ::= '_' <int>
-<value> ::= <literal-value> | <variable> | <function-call>
-<literal-value> ::= <int> | <float> | <string> | <bool>
-
-Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
-
-Description of the two skill sets:
-- High-level skills:
-abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
-abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
-abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
-abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
-abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->True}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output
-
-- Low-level skills:
-abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
-abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
-abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
-abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
-abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
-abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
-abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
-abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
-abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
-abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
-abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
-abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
-abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
-abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
-abbr:l,name:log,args:[text:str],description:Output text to console
-abbr:p,name:picture,args:[],description:Take a picture
-abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
-abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
-
-
-The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
-The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
-Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
-Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
-Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
-Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
-
-Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
-Example 1:
-    scene:[],task:[A] Find a bottle and tell me it's height.
-    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
-    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
-Example 2:
-    scene:[apple_5],task:[A] Find an apple.
-    response:o,apple;a
-    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
-Example 3:
-    scene:[apple_3],task:[Q] Is there an apple on your left?
-    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
-    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
-Example 4:
-    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
-    response:tc,180;o,chair;a
-    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
-Example 5:
-    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
-    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
-    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
-Example 6:
-    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
-    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
-    reason:we use loop and query to find animal
-Example 7:
-    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
-    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
-    reason:From the scene, we can see a chair, so we use sweeping to find a person
-Example 8:
-    scene:[chair_3, laptop_9],task:[A] Go to 
-    response:l,'Please give me more information.'
-    reason:The task is too vague, so we use log to output the advice
-Example 9:
-    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
-    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
-    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
-Example 10:
-    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
-    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
-    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
-Example 11:
-    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
-    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
-    reason:
-
-
-Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
-None
-
-Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
-'scene description':
-[person_94 x:0.7 y:0.3 width:0.21 height:0.58 color:darkslategray, chair_95 x:0.6 y:0.58 width:0.23 height:0.57 color:darkslategray, person_96 x:0.85 y:0.52 width:0.3 height:0.83 color:darkslategray, tv_98 x:0.55 y:0.22 width:0.07 height:0.12 color:mediumblue, umbrella_99 x:0.14 y:0.28 width:0.26 height:0.42 color:darkslategray, person_100 x:0.59 y:0.24 width:0.07 height:0.15 color:lightcoral, chair_103 x:0.59 y:0.3 width:0.06 height:0.1 color:darkslategray]
-'task description':
-[A] What color sweater is the person wearing?
-'response':
----
-{
-  "id": "chatcmpl-9ALfhvRyfLALodCPN2hW67xDST3Gf",
-  "choices": [
-    {
-      "finish_reason": "stop",
-      "index": 0,
-      "logprobs": null,
-      "message": {
-        "content": "_1=lr,'What color is the sweater of the person in the frame?';l,_1",
-        "role": "assistant",
-        "function_call": null,
-        "tool_calls": null
-      }
-    }
-  ],
-  "created": 1712253613,
-  "model": "gpt-4-0613",
-  "object": "chat.completion",
-  "system_fingerprint": null,
-  "usage": {
-    "completion_tokens": 21,
-    "prompt_tokens": 3013,
-    "total_tokens": 3034
+    "completion_tokens": 25,
+    "prompt_tokens": 2928,
+    "total_tokens": 2953
   }
 }
 ---
 
 ------------- LLAVA REQUEST --------
-Question: What color is the sweater of the person in the frame?
+Question: How many GPU units are there? Output only a number.
 
-Response: the person in the frame is wearing a maroon or burgundy sweater. </s>
+Response: 0 </s>
 ----------------------------------
 You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
 Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
@@ -405,210 +261,56 @@ None
 
 Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
 'scene description':
-[person_94 x:0.68 y:0.4 width:0.23 height:0.7 color:darkslategray, person_96 x:0.86 y:0.54 width:0.28 height:0.79 color:black, chair_95 x:0.58 y:0.58 width:0.27 height:0.54 color:darkslategray, person_112 x:0.53 y:0.23 width:0.2 height:0.45 color:tan]
+[dining table_136 x:0.18 y:0.73 width:0.36 height:0.53 color:darkslategray, cup_137 x:0.36 y:0.3 width:0.1 height:0.19 color:lightslategray, refrigerator_135 x:0.97 y:0.65 width:0.06 height:0.71 color:darkslategray, microwave_134 x:0.69 y:0.32 width:0.25 height:0.23 color:darkslategray]
 'task description':
-[A] What's the emotional state of the person in the sweater?
+[Q] Look to your left and tell me how many gpu units you see
 'response':
 ---
 {
-  "id": "chatcmpl-9ALg7rwxxdjJicMWXvAeyDHc7aYcP",
+  "id": "chatcmpl-9ALxaCAADQz0eFqOY4KbCrt9dLm3Q",
   "choices": [
     {
       "finish_reason": "stop",
       "index": 0,
       "logprobs": null,
       "message": {
-        "content": "_1=lr,'Which person is wearing a sweater? Output only the person ID';_2=lr,'What is the emotional state of '+_1+'?';l,_2",
+        "content": "tu,90;_1=sl,'How many GPU units are in the frame? Output only a number.','number';l,_1",
         "role": "assistant",
         "function_call": null,
         "tool_calls": null
       }
     }
   ],
-  "created": 1712253639,
+  "created": 1712254722,
   "model": "gpt-4-0613",
   "object": "chat.completion",
   "system_fingerprint": null,
   "usage": {
-    "completion_tokens": 38,
-    "prompt_tokens": 2923,
+    "completion_tokens": 28,
+    "prompt_tokens": 2933,
     "total_tokens": 2961
   }
 }
 ---
 
 ------------- LLAVA REQUEST --------
-Question: Which person is wearing a sweater? Output only the person ID
+Question: How many GPU units are in the frame? Output only a number.',
 
-Response: 1 </s>
+Response: 3 </s>
 ----------------------------------
 
 ------------- LLAVA REQUEST --------
-Question: What is the emotional state of '+_1+'?
+Question: How many GPU units are in the frame? Output only a number.',
 
-Response: the person in the image appears to have a somewhat displeased or annoyed expression. the facial features such as the furrowed brow, the slightly squinted eyes, and the downturned mouth all contribute to a look of discontent or irritation. </s>
-----------------------------------
-You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
-Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
-The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
-Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
-'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," etc.
-
-The BNF syntax definition of 'MiniSpec' is as follows:
-<program> ::= { <block-statement> [';'] | <statement> ';' }
-<statement> ::= <variable-assign> | <function-call> | <return>
-<block-statement> ::= <loop> | <conditional>
-<loop> ::= <int> '{' <program> '}'
-<function-call> ::= <function-name> { ',' <argument> }
-<variable-assign> ::= <variable> '=' <function-call>
-<conditional> ::= '?' <condition> '{' <program> '}'
-<return> ::= '->' <value>
-<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
-<comparator> ::= '>' | '<' | '==' | '!=' | '/'
-<function-name> ::= <alpha> { <alpha> }
-<argument> ::= <literal-value> { ',' <literal-value> }
-<variable> ::= '_' <int>
-<value> ::= <literal-value> | <variable> | <function-call>
-<literal-value> ::= <int> | <float> | <string> | <bool>
-
-Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
-
-Description of the two skill sets:
-- High-level skills:
-abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
-abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
-abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
-abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
-abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->True}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output
-
-- Low-level skills:
-abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
-abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
-abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
-abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
-abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
-abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
-abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
-abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
-abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
-abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
-abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
-abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
-abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
-abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
-abbr:l,name:log,args:[text:str],description:Output text to console
-abbr:p,name:picture,args:[],description:Take a picture
-abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
-abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
-
-
-The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
-The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
-Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
-Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
-Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
-Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
-
-Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
-Example 1:
-    scene:[],task:[A] Find a bottle and tell me it's height.
-    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
-    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
-Example 2:
-    scene:[apple_5],task:[A] Find an apple.
-    response:o,apple;a
-    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
-Example 3:
-    scene:[apple_3],task:[Q] Is there an apple on your left?
-    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
-    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
-Example 4:
-    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
-    response:tc,180;o,chair;a
-    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
-Example 5:
-    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
-    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
-    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
-Example 6:
-    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
-    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
-    reason:we use loop and query to find animal
-Example 7:
-    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
-    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
-    reason:From the scene, we can see a chair, so we use sweeping to find a person
-Example 8:
-    scene:[chair_3, laptop_9],task:[A] Go to 
-    response:l,'Please give me more information.'
-    reason:The task is too vague, so we use log to output the advice
-Example 9:
-    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
-    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
-    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
-Example 10:
-    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
-    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
-    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
-Example 11:
-    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
-    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
-    reason:
-
-
-Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
-None
-
-Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
-'scene description':
-[person_94 x:0.77 y:0.28 width:0.25 height:0.52 color:darkslategray, person_96 x:0.86 y:0.49 width:0.28 height:0.87 color:darkslategray, person_112 x:0.62 y:0.21 width:0.1 height:0.16 color:darksalmon, chair_113 x:0.61 y:0.55 width:0.21 height:0.55 color:darkslategray, chair_114 x:0.62 y:0.33 width:0.09 height:0.19 color:darkslategray, tv_115 x:0.56 y:0.21 width:0.07 height:0.11 color:whitesmoke, umbrella_99 x:0.14 y:0.24 width:0.28 height:0.46 color:darkslategray]
-'task description':
-[A] Is there a coffee machine in the area?
-'response':
----
-{
-  "id": "chatcmpl-9ALgk2QxSEW54rP4bodD4xaoBp3IR",
-  "choices": [
-    {
-      "finish_reason": "stop",
-      "index": 0,
-      "logprobs": null,
-      "message": {
-        "content": "_1=sl,'Is there a coffee machine in the frame? Answer only 'yes' or 'no'','yes';?_1!=False{l,'Yes, there is a coffee machine in the area.';->True}l,'No, there is no coffee machine in the area.';->False",
-        "role": "assistant",
-        "function_call": null,
-        "tool_calls": null
-      }
-    }
-  ],
-  "created": 1712253678,
-  "model": "gpt-4-0613",
-  "object": "chat.completion",
-  "system_fingerprint": null,
-  "usage": {
-    "completion_tokens": 64,
-    "prompt_tokens": 3016,
-    "total_tokens": 3080
-  }
-}
----
-
-------------- LLAVA REQUEST --------
-Question: Is there a coffee machine in the frame? Answer only 'yes' or 'no'',
-
-Response: no </s>
+Response: 0 </s>
 ----------------------------------
 
-------------- LLAVA REQUEST --------
-Question: Is there a coffee machine in the frame? Answer only 'yes' or 'no'',
+------------- MINISPEC ERROR -------------
+Original Minispec: tu,90;_1=sl,'How many GPU units are in the frame? Output only a number.','number';l,_1
+----
+Error:Command 'cw 45' was unsuccessful for 4 tries. Latest response:	'Aborting command 'cw 45'. Did not receive a response after 7 seconds'
 
-Response: no </s>
-----------------------------------
-
-------------- LLAVA REQUEST --------
-Question: Is there a coffee machine in the frame? Answer only 'yes' or 'no'',
-
-Response: yes </s>
+TRACEBACK: ['  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 152, in execute_task_description\n    self.execute_minispec(result)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 134, in execute_minispec\n    return interpreter.execute(minispec)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 66, in execute\n    self.execute_function_call(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 92, in execute_function_call\n    self.env[var.strip()] = self.call_function(func)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 146, in call_function\n    return interpreter.execute(skill_instance.execute(args))\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 58, in execute\n    result = self.execute_loop(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 78, in execute_loop\n    result = self.execute(program)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 66, in execute\n    self.execute_function_call(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 94, in execute_function_call\n    self.call_function(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 141, in call_function\n    return skill_instance.execute(args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/skillset.py", line 78, in execute\n    return self.skill_callable(*parsed_args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/tello_wrapper.py", line 86, in turn_cw\n    self.drone.rotate_clockwise(degree)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 670, in rotate_clockwise\n    self.send_control_command("cw {}".format(x))\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 487, in send_control_command\n    self.raise_result_error(command, response)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 529, in raise_result_error\n    raise TelloException("Command \'{}\' was unsuccessful for {} tries. Latest response:\\t\'{}\'"\n']
 ----------------------------------
 You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
 Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
@@ -723,40 +425,42 @@ None
 
 Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
 'scene description':
-[tv_121 x:0.08 y:0.32 width:0.16 height:0.16 color:black, cup_130 x:0.97 y:0.32 width:0.06 height:0.22 color:darkslategray, bed_132 x:0.28 y:0.47 width:0.57 height:0.37 color:darkslategray]
+[baseball bat x:0.59 y:0.12 width:0.04 height:0.23 color:mediumblue]
 'task description':
-[A] Approach the coffee machine in the area, if any
+[A] Take off
 'response':
 ---
 {
-  "id": "chatcmpl-9ALhJxWDoBp4pgoMsnfLEM87Rrjax",
+  "id": "chatcmpl-9ALzEMlFyCP7xoDlCfJzNADQrVzQP",
   "choices": [
     {
       "finish_reason": "stop",
       "index": 0,
       "logprobs": null,
       "message": {
-        "content": "_1=sl,'Is there a coffee machine in the frame? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False",
+        "content": "mu,100",
         "role": "assistant",
         "function_call": null,
         "tool_calls": null
       }
     }
   ],
-  "created": 1712253713,
+  "created": 1712254824,
   "model": "gpt-4-0613",
   "object": "chat.completion",
   "system_fingerprint": null,
   "usage": {
-    "completion_tokens": 38,
-    "prompt_tokens": 2895,
-    "total_tokens": 2933
+    "completion_tokens": 3,
+    "prompt_tokens": 2829,
+    "total_tokens": 2832
   }
 }
 ---
 
-------------- LLAVA REQUEST --------
-Question: Is there a coffee machine in the frame? Answer only 'yes' or 'no'',
+------------- MINISPEC ERROR -------------
+Original Minispec: mu,100
+----
+Error:Command 'up 100' was unsuccessful for 4 tries. Latest response:	'error Motor stop'
 
-Response: yes </s>
+TRACEBACK: ['  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 152, in execute_task_description\n    self.execute_minispec(result)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 134, in execute_minispec\n    return interpreter.execute(minispec)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 66, in execute\n    self.execute_function_call(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 94, in execute_function_call\n    self.call_function(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 141, in call_function\n    return skill_instance.execute(args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/skillset.py", line 78, in execute\n    return self.skill_callable(*parsed_args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/tello_wrapper.py", line 71, in move_up\n    self.drone.move_up(cap_distance(distance))\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 628, in move_up\n    self.move("up", x)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 621, in move\n    self.send_control_command("{} {}".format(direction, x))\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 487, in send_control_command\n    self.raise_result_error(command, response)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/enforce_types.py", line 54, in wrapper\n    return func(*args, **kwargs)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/.venv/lib/python3.8/site-packages/djitellopy/tello.py", line 529, in raise_result_error\n    raise TelloException("Command \'{}\' was unsuccessful for {} tries. Latest response:\\t\'{}\'"\n']
 ----------------------------------
