@@ -22,7 +22,7 @@
     {
         "skill_name": "sweeping_llava",
         "skill_description": "Rotate, consult LLaVA at each step, and check for a specific substring in its output",
-        "definition": "8{_1=lr,$1;?_1/$2{->True}tc,45}->False",
+        "definition": "8{_1=lr,$1;?_1/$2{->_1}tc,45}->False",
         "args": [
             {
                 "name": "question", 
