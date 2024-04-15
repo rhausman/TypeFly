@@ -16,7 +16,7 @@ from controller.utils import print_t
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class TypeFly:
-    def __init__(self, use_virtual_cam=True, use_http=False):
+    def __init__(self, use_virtual_cam=True, use_http=False, llava_prefix=False, llava_bounding_boxes=False, replan_skill=False):
          # create a cache folder
         self.cache_folder = os.path.join(CURRENT_DIR, 'cache')
         if not os.path.exists(self.cache_folder):
@@ -102,8 +102,12 @@ class TypeFly:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_virtual_cam', action='store_false')
+    parser.add_argument('--use_virtual_cam', action='store_true')
     parser.add_argument('--use_http', action='store_true')
+    parser.add_argument('--llava_prefix', action='store_true')
+    parser.add_argument('--llava_bounding_boxes', action='store_true')
+    parser.add_argument('--replan_skill', action='store_true')
     args = parser.parse_args()
-    typefly = TypeFly(use_virtual_cam=args.use_virtual_cam, use_http=args.use_http)
+    print(f"[MAIN] Feature flags: {vars(args)}")
+    typefly = TypeFly(use_virtual_cam=args.use_virtual_cam, use_http=args.use_http, llava_prefix=args.llava_prefix, llava_bounding_boxes=args.llava_bounding_boxes, replan_skill=args.replan_skill)
     typefly.run()
