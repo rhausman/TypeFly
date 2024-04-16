@@ -25,6 +25,8 @@ yolo_client = YoloClient()
 if True: #len(os.listdir(BOXES_IMAGES_PATH)) < 2: # account for .DS_Store
     detect_results = {}
     image_names = os.listdir(ORIG_IMAGES_PATH)
+    if ".DS_Store" in image_names:
+        image_names.remove(".DS_Store")
 
     for name in image_names:
         image_path = os.path.join(ORIG_IMAGES_PATH, name)
