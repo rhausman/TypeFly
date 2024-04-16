@@ -34,8 +34,8 @@ if __name__ == '__main__':
     print("Running test...")
     client = LlavaClient()
     
-    image = Image.open('images/kitchen.webp')
-    prompt = 'What is in the image?'
+    image = Image.open('images/example_people.png')
+    prompt = "You are a drone agent's visual module, which means you should return accurate and concise answers about the scene. Which direction is person_110 facing? Output only Left or Right?"
     result = client.percieve_local(image, prompt)
     response = result.get('response')
     print(f"Asked \'{prompt}\', got response: \'{response}\'")
