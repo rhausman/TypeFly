@@ -201,7 +201,7 @@ class LlavaService(hyrch_serving_pb2_grpc.LlavaServiceServicer):
         outputs = self.run_inference(data)
         print(f"Formatting output... type: {type(outputs)}")
         #response = LlavaService.format_outputs(outputs)
-        response = outputs
+        response = outputs.replace('<s>', '').replace('</s>', '').strip()
         print(f"Returning response: {response[:100]}...")
         return hyrch_serving_pb2.PromptResponse(json_data= json.dumps({"response": response}) )
       
