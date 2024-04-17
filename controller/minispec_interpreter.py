@@ -54,7 +54,7 @@ class MiniSpecInterpreter:
                 continue
             if statement.startswith('->'):
                 return self.evaluate_return(statement)
-            elif statement[1:].lstrip().startswith('{') or statement[2:].lstrip().startswith('{'):
+            elif re.compile("^[0-9]").match(statement): #statement[1:].lstrip().startswith('{') or statement[2:].lstrip().startswith('{'):
                 result = self.execute_loop(statement)
                 if result is not None:
                     return result
