@@ -15,7 +15,7 @@ class LlavaClient:
     (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally.
     Now, answer the following question from the drone: """
     def __init__(self, llava_prefix=False):
-        print("init llava client")
+        print(f"init llava client with llava_previx={llava_prefix}")
         self.llava_prefix = llava_prefix
         self.service_url = f"http://{VISION_SERVICE_IP}:{ROUTER_SERVICE_PORT}/llava"
         # TODO: have llava client ping at startup to test if the service is available, 
