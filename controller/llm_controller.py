@@ -22,7 +22,7 @@ from .llm_wrapper import chat_log_path
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class LLMController():
-    def __init__(self, use_virtual_drone=True, use_http=False, message_queue: Optional[queue.Queue]=None):
+    def __init__(self, use_virtual_drone=True, use_http=False, message_queue: Optional[queue.Queue]=None, llava_prefix: bool=False):
         self.yolo_results_image_queue = queue.Queue(maxsize=30)
         self.shared_yolo_result = SharedYoloResult()
         if use_http:
@@ -33,7 +33,7 @@ class LLMController():
         
         # Establish connection to LLaVA Service
         if use_http:
-            self.llava_client = LlavaClient()
+            self.llava_client = LlavaClient(llava_prefix=llava_prefix)
         else: 
             raise NotImplementedError("LLaVA gRPC client is not implemented yet")
         self.latest_frame = None
