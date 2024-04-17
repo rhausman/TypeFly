@@ -20,6 +20,7 @@ from .llava_client import LlavaClient
 from .llm_wrapper import chat_log_path
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+MAX_RECURSION_DEPTH = 5
 
 class LLMController():
     def __init__(self, use_virtual_drone=True, use_http=False, message_queue: Optional[queue.Queue]=None, llava_prefix: bool=False):
@@ -56,6 +57,7 @@ class LLMController():
             self.drone: DroneWrapper = TelloWrapper()
         
         self.planner = LLMPlanner()
+        self.recursion_depth = 0
 
         # load low-level skills
         self.low_level_skillset = SkillSet(level="low")
@@ -77,6 +79,7 @@ class LLMController():
         self.low_level_skillset.add_skill(LowLevelSkillItem("picture", self.picture, "Take a picture"))
         self.low_level_skillset.add_skill(LowLevelSkillItem("query", self.planner.request_execution, "Query the LLM for reasoning", args=[SkillArg("question", str)]))
         self.low_level_skillset.add_skill(LowLevelSkillItem("llava_request", self.request_llava_query, "Query LLaVA for visual description, reasoning, and more", args=[SkillArg("question", str)]))
+        self.low_level_skillset.add_skill(LowLevelSkillItem("replan", self.replan, "Restart the planning process for the current task, given the new situation and position of the drone.", args=[SkillArg("task", str)]))
 
         # load high-level skills
         self.high_level_skillset = SkillSet(level="high", lower_level_skillset=self.low_level_skillset)
@@ -89,6 +92,17 @@ class LLMController():
         MiniSpecInterpreter.high_level_skillset = self.high_level_skillset
         self.planner.init(high_level_skillset=self.high_level_skillset, low_level_skillset=self.low_level_skillset, vision_skill=self.vision)
 
+    """
+    Replan the current task.
+    1. Just use the standard replan with the same original task.
+    """
+    def replan(self, task: str):
+        self.recursion_depth += 1
+        if self.recursion_depth > MAX_RECURSION_DEPTH:
+            self.append_message("[ERROR] Recursion depth exceeded the limit!")
+            return
+        self.planner.request_planning(task)
+    
     # Make a call to llava. We could have this return different types of values, such as a quantity,etc.
     # For now it will just return text TODO: make it return different types of values
     def request_llava_query(self, question: str) -> Union[bool, str, int, float]: 
@@ -138,6 +152,8 @@ class LLMController():
             self.append_message("[Warning] Controller is waiting for takeoff...")
             return
         self.append_message('[TASK]: ' + task_description)
+        # self.current_task is used in the event of "replan"
+        self.current_task = task_description
         for _ in range(1):
             t1 = time.time()
             result = self.planner.request_planning(task_description)
@@ -160,6 +176,8 @@ class LLMController():
                     
         self.append_message('Task complete!')
         self.append_message('end')
+        self.current_task = None
+        self.recursion_depth = 0
 
     def start_robot(self):
         print_t("[C] Drone is taking off...")
