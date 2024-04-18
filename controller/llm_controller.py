@@ -17,7 +17,7 @@ from .skillset import SkillSet, LowLevelSkillItem, HighLevelSkillItem, SkillArg
 from .utils import print_t, input_t
 from .minispec_interpreter import MiniSpecInterpreter
 from .llava_client import LlavaClient
-from .llm_wrapper import chat_log_path
+from .llm_wrapper import chat_log_path, update_stats
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_RECURSION_DEPTH = 5
@@ -159,20 +159,27 @@ class LLMController():
             result = self.planner.request_planning(task_description)
             t2 = time.time()
             print_t(f"[C] Planning time: {t2 - t1}")
+            update_stats(key="planning_time", value=t2 - t1)
             self.append_message('[PLAN]: ' + result + f', received in ({t2 - t1:.2f}s)')
             # consent = input_t(f"[C] Get plan: {result}, executing?")
             # if consent == 'n':
             #     print_t("[C] > Plan rejected <")
             #     return
             try:
+                t1 = time.time()
                 self.execute_minispec(result)
+                t2 = time.time()
+                print_t(f"[C] Execution time: {t2 - t1}")
+                update_stats(key="execution_time", value=t2 - t1)
             except Exception as e:
                 _tb = format_tb(e.__traceback__)
                 self.append_message(f'[ERROR]: Minispec execution error: {e}.')
                 print_t(f"[C] Minispec execution error: {e}\n---- TRACEBACK: {_tb}")
                 # log to the chat log
                 with open(chat_log_path, "a") as ff: 
-                    ff.write(f"\n------------- MINISPEC ERROR -------------\nOriginal Minispec: {result}\n----\nError:{e}\n\nTRACEBACK: {_tb}\n----------------------------------\n")  
+                    ff.write(f"\n------------- MINISPEC ERROR -------------\nOriginal Minispec: {result}\n----\nError:{e}\n\nTRACEBACK: {_tb}\n----------------------------------\n") 
+                # update the stats with an "error" value indicating something went wrong on this try
+                update_stats(key="execution_time", value="error") 
                     
         self.append_message('Task complete!')
         self.append_message('end')
