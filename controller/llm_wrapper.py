@@ -21,7 +21,7 @@ class LLMWrapper:
         # clean chat_log
         open(chat_log_path, "w").close()
         with open(stats_path, "w") as ff:
-            json.dump({"tokens": [], "planning_time": [], "execution_time": []}, ff)
+            json.dump({"task":[], "tokens": [], "planning_time": [], "execution_time": []}, ff)
 
     def request(self, prompt, model_name=MODEL_NAME):
         response = openai.chat.completions.create(

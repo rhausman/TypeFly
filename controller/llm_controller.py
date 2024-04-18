@@ -155,6 +155,8 @@ class LLMController():
         # self.current_task is used in the event of "replan"
         self.current_task = task_description
         for _ in range(1):
+            # Keep track of the task description
+            update_stats(key="task", value = task_description)
             t1 = time.time()
             result = self.planner.request_planning(task_description)
             t2 = time.time()
