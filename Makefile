@@ -49,11 +49,11 @@ build: validate_service
 typefly:
 	bash ./serving/webui/install_requirements.sh
 	cd ./proto && bash generate.sh
-	python3 ./serving/webui/typefly.py --use_http --llava_prefix 
+	python3 ./serving/webui/typefly.py --use_http --llava_prefix --llava_bounding_boxes
 # Available feature flags:
 # --use_virtual_cam : Use virtual camera instead of real camera
 # --use_http: Use http instead of grpc (should be enabled more or less always)
 # TODO in progress:
-# --llava-prefix : attaches a prefix to requests sent to llava to optimize the output.
-# --llava-bounding-boxes : sends yolo bounding-boxes and labels to llava
+# --llava_prefix : attaches a prefix to requests sent to llava to optimize the output.
+# --llava_bounding_boxes : sends yolo bounding-boxes and labels to llava
 # --replan-skill : enables the "re-plan" skill of TypeFly

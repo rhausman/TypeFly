@@ -23,7 +23,11 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_RECURSION_DEPTH = 5
 
 class LLMController():
-    def __init__(self, use_virtual_drone=True, use_http=False, message_queue: Optional[queue.Queue]=None, llava_prefix: bool=False):
+    def __init__(self, use_virtual_drone=True, use_http=False, message_queue: Optional[queue.Queue]=None, llava_prefix: bool=False, llava_bounding_boxes:bool =False):
+        # save feature flags
+        self.llava_prefix = llava_prefix
+        self.llava_bounding_boxes = llava_bounding_boxes
+        
         self.yolo_results_image_queue = queue.Queue(maxsize=30)
         self.shared_yolo_result = SharedYoloResult()
         if use_http:
@@ -107,7 +111,9 @@ class LLMController():
     # For now it will just return text TODO: make it return different types of values
     def request_llava_query(self, question: str) -> Union[bool, str, int, float]: 
         # 1. Get a picture
-        frame = Image.fromarray(self.latest_frame)
+        frame = self.get_latest_frame() if self.llava_bounding_boxes else Image.fromarray(self.latest_frame)
+        # frame.save(os.path.join(CURRENT_DIR, "assets/last_llava.jpg"))
+        
         # 2. Use the llava client to query...
         # if self.llava_client.is_local_service(): # use local otherwise don't TODO
         result = self.llava_client.percieve_local(frame, question)
