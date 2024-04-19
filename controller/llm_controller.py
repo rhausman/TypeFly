@@ -122,7 +122,7 @@ class LLMController():
         # TODO: 2. have GPT-4 interpret the output from LLaVA and simplify it or use it for planning
         # 3. Log and return the result
         with open(chat_log_path, "a") as ff:
-            ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {question}\n\n")
+            ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {LlavaClient.llava_prompt_prefix if self.llava_client.llava_prefix else ''} {question}\n\n")
             ff.write(f"Response: {result_text}\n----------------------------------\n")
         return result_text
         
