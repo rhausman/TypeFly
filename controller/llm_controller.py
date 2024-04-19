@@ -116,13 +116,14 @@ class LLMController():
         
         # 2. Use the llava client to query...
         # if self.llava_client.is_local_service(): # use local otherwise don't TODO
-        result = self.llava_client.percieve_local(frame, question)
+        result = self.llava_client.percieve_local(image=frame, prompt=question, scene_description=self.planner.vision_skill.get_obj_list())
         result_text = result.get('response').lower()
         # TODO: 1. Do a re-planning stage based on the output from this!
         # TODO: 2. have GPT-4 interpret the output from LLaVA and simplify it or use it for planning
         # 3. Log and return the result
         with open(chat_log_path, "a") as ff:
-            ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {LlavaClient.llava_prompt_prefix if self.llava_client.llava_prefix else ''} {question}\n\n")
+            ff.write(f"\n------------- LLAVA REQUEST --------\nQuestion: {LlavaClient.llava_prompt_prefix.format(scene_description=self.planner.vision_skill.get_obj_list()) if self.llava_client.llava_prefix else ''} {question}\n\n")
+            # ff.write(f"available scene description: {self.planner.vision_skill.get_obj_list()}")
             ff.write(f"Response: {result_text}\n----------------------------------\n")
         return result_text
         
