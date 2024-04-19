@@ -112,7 +112,7 @@ class LLMController():
     def request_llava_query(self, question: str) -> Union[bool, str, int, float]: 
         # 1. Get a picture
         frame = self.get_latest_frame() if self.llava_bounding_boxes else Image.fromarray(self.latest_frame)
-        # frame.save(os.path.join(CURRENT_DIR, "assets/last_llava.jpg"))
+        frame.save(os.path.join(CURRENT_DIR, "assets/last_llava.jpg"))
         
         # 2. Use the llava client to query...
         # if self.llava_client.is_local_service(): # use local otherwise don't TODO
