@@ -112,34 +112,34 @@ None
 
 Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
 'scene description':
-[carrot_560 x:0.95 y:0.9 width:0.1 height:0.2 color:rosybrown, chair_568 x:0.41 y:0.56 width:0.55 height:0.87 color:dimgray, bottle_558 x:0.35 y:0.04 width:0.04 height:0.07 color:darkgray]
+[person_565 x:0.55 y:0.54 width:0.6 height:0.92 color:gray]
 'task description':
-[Q] What object is behind the chair?
+[A] Find the person and log whether or not he is walking
 'response':
 ---
 {
-  "id": "chatcmpl-9FdOZg5HywmhsQCrV2tAHgetWYNSH",
+  "id": "chatcmpl-9H043IRVj17gr0bSsAe2YQ0CbZjZu",
   "choices": [
     {
       "finish_reason": "stop",
       "index": 0,
       "logprobs": null,
       "message": {
-        "content": "_1=lr,'What object is behind the chair_568?';l,_1",
+        "content": "_1=lr,'Is the person_565 walking? Answer only 'yes' or 'no'';l,_1",
         "role": "assistant",
         "function_call": null,
         "tool_calls": null
       }
     }
   ],
-  "created": 1713513383,
+  "created": 1713838851,
   "model": "gpt-4-0613",
   "object": "chat.completion",
   "system_fingerprint": null,
   "usage": {
-    "completion_tokens": 18,
-    "prompt_tokens": 3035,
-    "total_tokens": 3053
+    "completion_tokens": 25,
+    "prompt_tokens": 2980,
+    "total_tokens": 3005
   }
 }
 ---
@@ -148,8 +148,1859 @@ Now given the following 'scene description' and 'task description', please gener
 Question: You are the vision model for a drone that is attempting to accomplish tasks. 
     The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
     If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
-    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [carrot_560 x:0.95 y:0.9 width:0.1 height:0.2 color:rosybrown, chair_568 x:0.41 y:0.56 width:0.55 height:0.87 color:darkslategray, bottle_558 x:0.35 y:0.04 width:0.04 height:0.07 color:gray]
-    Now, answer the following question from the drone:  What object is behind the chair_568?
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_565 x:0.54 y:0.54 width:0.59 height:0.92 color:gray]
+    Now, answer the following question from the drone:  Is the person_565 walking? Answer only 'yes' or 'no
 
-Response: the object behind the chair_568 is the trash can.
+Response: no
 ----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[chair x:0.27 y:0.93 width:0.07 height:0.14 color:darkslategray, book x:0.9 y:0.72 width:0.03 height:0.14 color:tan, book x:0.79 y:0.56 width:0.02 height:0.14 color:mediumblue, book x:0.71 y:0.6 width:0.02 height:0.1 color:mediumblue, book x:0.73 y:0.59 width:0.04 height:0.1 color:gray, book x:0.86 y:0.74 width:0.06 height:0.13 color:peru, bottle x:0.94 y:0.72 width:0.04 height:0.12 color:dimgray, bottle x:0.98 y:0.7 width:0.04 height:0.16 color:sienna, book x:0.71 y:0.6 width:0.03 height:0.1 color:lightslategray, book x:0.7 y:0.6 width:0.02 height:0.11 color:darkgray, chair x:0.22 y:0.93 width:0.16 height:0.14 color:darkolivegreen, book x:0.76 y:0.57 width:0.04 height:0.13 color:darkslateblue, book x:0.73 y:0.59 width:0.03 height:0.1 color:mediumblue, book x:0.7 y:0.6 width:0.02 height:0.1 color:darkgray, book x:0.71 y:0.58 width:0.19 height:0.19 color:gray, book x:0.77 y:0.57 width:0.04 height:0.12 color:darkslateblue, book x:0.74 y:0.59 width:0.03 height:0.1 color:mediumblue]
+'task description':
+[A] Find the person and log whether or not he is walking
+'response':
+---
+{
+  "id": "chatcmpl-9H04UbWV2JYLrCDBysE4IT7jj04uh",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=sa,'where is the person?';?_1!=False{o,_1;_2=lr,'Is the person walking? Answer only 'yes' or 'no'';l,_2}",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713838878,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 44,
+    "prompt_tokens": 3401,
+    "total_tokens": 3445
+  }
+}
+---
+"""
+You are given a scene description and a question. You should output the answer to the question based on the scene description.
+The scene description contains listed objects with their respective names, locations, and sizes.
+The question is a string that asks about the scene or the objects in the scene.
+For yes-or-no questions, output with 'True' or 'False' only.
+For object identification, output the object's name. If the object is not in the list, output with 'False'.
+For counting questions, output the exact number of target objects.
+For general questions, output a brief, single-sentence answer.
+
+Input Format:
+Scene Description:[List of Objects with Attributes]
+Question:[A String]
+
+Output Format:
+[A String]
+
+Here are some examples:
+Example 1:
+Scene Description:[person_1,x:0.59,y:0.55,width:0.81,height:0.91,color:red, bottle_17,x:0.85,y:0.54,width:0.21,height:0.93,color:darkgreen]
+Question:'What's the drinkable target?'
+Output:bottle_17
+Example 2:
+Scene Description:[]
+Question:'Is the table in the room?'
+Output:False
+Example 3:
+Scene Description:[chair_1,x:0.1,y:0.35,width:0.56,height:0.41,color:black, chair_2,x:0.49,y:0.59,width:0.61,height:0.35,color:blue]
+Question:'How many chairs you can see?'
+Output:2
+Example 4:
+Scene Description:[bottle_3,x:0.1,y:0.35,width:0.56,height:0.41,color:black, chair_2,x:0.49,y:0.59,width:0.61,height:0.35,color:blue]
+Question:'What's the edible target?'
+Output:False
+"""
+Scene Description:[chair x:0.27 y:0.93 width:0.07 height:0.14 color:darkslategray, book x:0.79 y:0.56 width:0.02 height:0.14 color:rosybrown, book x:0.86 y:0.74 width:0.06 height:0.13 color:peru, book x:0.9 y:0.72 width:0.03 height:0.14 color:tan, book x:0.71 y:0.6 width:0.02 height:0.1 color:mediumblue, book x:0.73 y:0.59 width:0.04 height:0.1 color:gray, book x:0.77 y:0.57 width:0.03 height:0.12 color:mediumblue, book x:0.7 y:0.6 width:0.02 height:0.11 color:blue, book x:0.71 y:0.59 width:0.03 height:0.11 color:mediumblue, bottle x:0.94 y:0.72 width:0.04 height:0.13 color:dimgray, chair x:0.22 y:0.93 width:0.16 height:0.14 color:darkolivegreen, book x:0.71 y:0.58 width:0.19 height:0.19 color:gray, bottle x:0.98 y:0.7 width:0.04 height:0.16 color:darkolivegreen, book x:0.76 y:0.57 width:0.04 height:0.12 color:slategray, book x:0.73 y:0.59 width:0.03 height:0.1 color:mediumblue, book x:0.7 y:0.6 width:0.03 height:0.1 color:mediumblue, book x:0.85 y:0.55 width:0.09 height:0.12 color:gray, book x:0.74 y:0.59 width:0.03 height:0.1 color:lightslategray, book x:0.77 y:0.42 width:0.02 height:0.09 color:mediumblue, book x:0.69 y:0.6 width:0.02 height:0.11 color:rosybrown, book x:0.7 y:0.6 width:0.02 height:0.1 color:blue, book x:0.76 y:0.57 width:0.03 height:0.12 color:indianred, book x:0.72 y:0.88 width:0.09 height:0.04 color:darkslategray, book x:0.74 y:0.58 width:0.03 height:0.12 color:rosybrown]
+Question:where is the person?
+Please give the content of Output only
+---
+{
+  "id": "chatcmpl-9H04aTMPsfyasCFOsfnNkKUnBZqri",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713838884,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 1,
+    "prompt_tokens": 1056,
+    "total_tokens": 1057
+  }
+}
+---
+"""
+You are given a scene description and a question. You should output the answer to the question based on the scene description.
+The scene description contains listed objects with their respective names, locations, and sizes.
+The question is a string that asks about the scene or the objects in the scene.
+For yes-or-no questions, output with 'True' or 'False' only.
+For object identification, output the object's name. If the object is not in the list, output with 'False'.
+For counting questions, output the exact number of target objects.
+For general questions, output a brief, single-sentence answer.
+
+Input Format:
+Scene Description:[List of Objects with Attributes]
+Question:[A String]
+
+Output Format:
+[A String]
+
+Here are some examples:
+Example 1:
+Scene Description:[person_1,x:0.59,y:0.55,width:0.81,height:0.91,color:red, bottle_17,x:0.85,y:0.54,width:0.21,height:0.93,color:darkgreen]
+Question:'What's the drinkable target?'
+Output:bottle_17
+Example 2:
+Scene Description:[]
+Question:'Is the table in the room?'
+Output:False
+Example 3:
+Scene Description:[chair_1,x:0.1,y:0.35,width:0.56,height:0.41,color:black, chair_2,x:0.49,y:0.59,width:0.61,height:0.35,color:blue]
+Question:'How many chairs you can see?'
+Output:2
+Example 4:
+Scene Description:[bottle_3,x:0.1,y:0.35,width:0.56,height:0.41,color:black, chair_2,x:0.49,y:0.59,width:0.61,height:0.35,color:blue]
+Question:'What's the edible target?'
+Output:False
+"""
+Scene Description:[chair x:0.27 y:0.93 width:0.07 height:0.14 color:darkslategray, book x:0.86 y:0.74 width:0.06 height:0.13 color:gray, book x:0.9 y:0.72 width:0.03 height:0.14 color:darksalmon, book x:0.73 y:0.59 width:0.04 height:0.11 color:darkgray, book x:0.79 y:0.56 width:0.02 height:0.14 color:darkgray, person x:0.1 y:0.97 width:0.11 height:0.07 color:mediumblue, book x:0.71 y:0.6 width:0.03 height:0.1 color:lightslategray, book x:0.7 y:0.6 width:0.03 height:0.1 color:mediumblue, book x:0.77 y:0.57 width:0.05 height:0.12 color:slategray, book x:0.74 y:0.59 width:0.02 height:0.1 color:mediumblue, book x:0.7 y:0.6 width:0.02 height:0.11 color:darkgray, book x:0.71 y:0.58 width:0.18 height:0.19 color:gray, chair x:0.22 y:0.93 width:0.16 height:0.14 color:darkolivegreen, chair x:0.19 y:0.93 width:0.22 height:0.14 color:darkslategray, book x:0.85 y:0.55 width:0.09 height:0.13 color:gray, book x:0.74 y:0.59 width:0.03 height:0.1 color:mediumblue, book x:0.72 y:0.88 width:0.09 height:0.04 color:darkslategray, book x:0.83 y:0.74 width:0.02 height:0.11 color:burlywood]
+Question:where is the person?
+Please give the content of Output only
+---
+{
+  "id": "chatcmpl-9H04cReTMc7VSysjNK6HNLpFxqzbL",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "x:0.1 y:0.97",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713838886,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 10,
+    "prompt_tokens": 901,
+    "total_tokens": 911
+  }
+}
+---
+
+------------- MINISPEC ERROR -------------
+Original Minispec: _1=sa,'where is the person?';?_1!=False{o,_1;_2=lr,'Is the person walking? Answer only 'yes' or 'no'';l,_2}
+----
+Error:Object x:0.1 y:0.97 is not in sight.
+
+TRACEBACK: ['  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 179, in execute_task_description\n    self.execute_minispec(result)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/llm_controller.py", line 155, in execute_minispec\n    return interpreter.execute(minispec)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 62, in execute\n    result = self.execute_conditional(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 87, in execute_conditional\n    return self.execute(program)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 66, in execute\n    self.execute_function_call(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 94, in execute_function_call\n    self.call_function(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 146, in call_function\n    return interpreter.execute(skill_instance.execute(args))\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 58, in execute\n    result = self.execute_loop(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 78, in execute_loop\n    result = self.execute(program)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 66, in execute\n    self.execute_function_call(statement)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 92, in execute_function_call\n    self.env[var.strip()] = self.call_function(func)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/minispec_interpreter.py", line 141, in call_function\n    return skill_instance.execute(args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/skillset.py", line 78, in execute\n    return self.skill_callable(*parsed_args)\n', '  File "/Users/richardhausman/Documents/Yale/_Senior_Year/TypeFly/controller/vision_skill_wrapper.py", line 71, in object_x\n    raise ValueError(f"Object {object_name} is not in sight.")\n']
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.47 y:0.51 width:0.38 height:0.99 color:gray, cell phone_571 x:0.18 y:0.93 width:0.12 height:0.14 color:darkgray, cup_572 x:0.8 y:0.76 width:0.12 height:0.19 color:dimgray, chair_573 x:0.68 y:0.62 width:0.08 height:0.42 color:darkslategray]
+'task description':
+[Q] is the person writing?
+'response':
+---
+{
+  "id": "chatcmpl-9H05zbDc1T4Jxv99heyoSS3apZv19",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'Yes';->True}?_1/'no'{l,'No';->False}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713838971,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 46,
+    "prompt_tokens": 3061,
+    "total_tokens": 3107
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.52 y:0.45 width:0.44 height:0.89 color:dimgray, cup_572 x:0.8 y:0.72 width:0.12 height:0.19 color:dimgray, cell phone_571 x:0.18 y:0.92 width:0.12 height:0.16 color:darkgray]
+    Now, answer the following question from the drone:  Is the person writing? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.47 y:0.5 width:0.47 height:1.0 color:gray, cell phone_571 x:0.18 y:0.91 width:0.12 height:0.15 color:darkgray, cup_578 x:0.8 y:0.71 width:0.12 height:0.19 color:dimgray, chair_579 x:0.74 y:0.58 width:0.08 height:0.43 color:darkslategray]
+'task description':
+[Q] is the person writing?
+'response':
+---
+{
+  "id": "chatcmpl-9H06IbwOKrxioypnhZSbtYgi3qsgR",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'Yes';->True}?_1/'no'{l,'No';->False}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713838990,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 46,
+    "prompt_tokens": 3061,
+    "total_tokens": 3107
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.49 y:0.41 width:0.51 height:0.81 color:dimgray, cell phone_571 x:0.18 y:0.9 width:0.12 height:0.16 color:rosybrown, cup_578 x:0.8 y:0.71 width:0.12 height:0.19 color:dimgray]
+    Now, answer the following question from the drone:  Is the person writing? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.44 y:0.5 width:0.58 height:1.0 color:gray, cup_581 x:0.81 y:0.72 width:0.12 height:0.19 color:dimgray]
+'task description':
+[Q] is the person actively writing?
+'response':
+---
+{
+  "id": "chatcmpl-9H06dT1S9JjtrDJ0V9w4D24Ln308f",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person actively writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'Yes';->True}?_1/'no'{l,'No';->False}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839011,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 47,
+    "prompt_tokens": 3003,
+    "total_tokens": 3050
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.54 y:0.4 width:0.4 height:0.79 color:dimgray, cup_581 x:0.81 y:0.7 width:0.12 height:0.19 color:dimgray, cell phone_582 x:0.19 y:0.9 width:0.12 height:0.15 color:rosybrown]
+    Now, answer the following question from the drone:  Is the person actively writing? Answer only 'yes' or 'no
+
+Response: no
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.51 y:0.5 width:0.49 height:1.0 color:gray, cell phone_582 x:0.19 y:0.9 width:0.12 height:0.16 color:darkgray, cup_584 x:0.81 y:0.71 width:0.12 height:0.19 color:dimgray]
+'task description':
+[Q] is the person actively writing?
+'response':
+---
+{
+  "id": "chatcmpl-9H06vdvnAlVaetjyNjTFtB5C3Fw5R",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person actively writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'Yes';->True}?_1/'no'{l,'No';->False}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839029,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 47,
+    "prompt_tokens": 3032,
+    "total_tokens": 3079
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.52 y:0.47 width:0.5 height:0.93 color:dimgray, cell phone_582 x:0.19 y:0.9 width:0.12 height:0.15 color:darkgray, laptop_587 x:0.48 y:0.89 width:0.28 height:0.22 color:gainsboro]
+    Now, answer the following question from the drone:  Is the person actively writing? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.59 y:0.5 width:0.49 height:1.0 color:gray, chair_591 x:0.91 y:0.59 width:0.19 height:0.42 color:darkslategray]
+'task description':
+[Q] is the person actively writing?
+'response':
+---
+{
+  "id": "chatcmpl-9H07MtmQ8WfrXnJIZrPMhwsSV5Y5B",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person_567 actively writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'Yes';->True}?_1/'no'{l,'No';->False}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839056,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 49,
+    "prompt_tokens": 3005,
+    "total_tokens": 3054
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.57 y:0.51 width:0.61 height:0.99 color:dimgray, chair_591 x:0.93 y:0.55 width:0.14 height:0.36 color:darkslategray, cell phone_582 x:0.15 y:0.93 width:0.11 height:0.15 color:lightslategray]
+    Now, answer the following question from the drone:  Is the person_567 actively writing? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_567 x:0.46 y:0.5 width:0.85 height:1.0 color:darkslategray]
+'task description':
+[Q] is the person actively writing? If so, output a guess as to what roughly he's writing
+'response':
+---
+{
+  "id": "chatcmpl-9H08bS9g6HeuSO2vzuPo1tUgZRZeH",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person actively writing? Answer only 'yes' or 'no'';?_1/'yes'{_2=lr,'What is the person roughly writing?';l,_2;->True}l,'The person is not actively writing';->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839133,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 58,
+    "prompt_tokens": 2992,
+    "total_tokens": 3050
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.6 y:0.5 width:0.56 height:1.0 color:gray, cell phone_602 x:0.15 y:0.93 width:0.1 height:0.15 color:darkgray]
+    Now, answer the following question from the drone:  Is the person actively writing? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_567 x:0.6 y:0.5 width:0.56 height:1.0 color:gray, cell phone_602 x:0.15 y:0.93 width:0.11 height:0.15 color:darkgray]
+    Now, answer the following question from the drone:  What is the person roughly writing?
+
+Response: the person is roughly writing on a piece of paper.
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_610 x:0.49 y:0.5 width:0.98 height:1.0 color:darkgray, person_619 x:0.92 y:0.71 width:0.17 height:0.29 color:dimgray, person_622 x:0.53 y:0.1 width:0.35 height:0.21 color:dimgray]
+'task description':
+[Q] What is written on the piece of paper?
+'response':
+---
+{
+  "id": "chatcmpl-9H0A4pWxlgZc3PviKCsxhP6q4HMUx",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=sl,'Is there a piece of paper in the frame? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is written on the piece of paper in the frame?';l,_2;->True}l,'There is no piece of paper in the frame';->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839224,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 71,
+    "prompt_tokens": 3035,
+    "total_tokens": 3106
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_610 x:0.58 y:0.49 width:0.77 height:0.98 color:darkgray, person_622 x:0.55 y:0.12 width:0.36 height:0.24 color:dimgray, person_619 x:0.95 y:0.71 width:0.11 height:0.24 color:dimgray]
+    Now, answer the following question from the drone:  Is there a piece of paper in the frame? Answer only 'yes' or 'no'',
+
+Response: yes
+----------------------------------
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_610 x:0.6 y:0.49 width:0.78 height:0.99 color:darkgray, person_622 x:0.55 y:0.12 width:0.37 height:0.23 color:dimgray, person_619 x:0.94 y:0.73 width:0.12 height:0.33 color:gray]
+    Now, answer the following question from the drone:  What is written on the piece of paper in the frame?
+
+Response: the paper in the frame has the words "hey there!" written on it.
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_610 x:0.53 y:0.5 width:0.66 height:1.0 color:gray]
+'task description':
+[A] Find the person. If he is writing something, log "he is writing!", turn 360 degrees clockwise, then log the message written on the piece of paper
+'response':
+---
+{
+  "id": "chatcmpl-9H0Bm3Ixz1SMrz0wMR3Fy8OWYvXoW",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=s,person;?_1==True{o,person;_2=lr,'Is the person writing something? Answer only 'yes' or 'no'';?_2/'yes'{l,'he is writing!';tc,360;_3=lr,'What is the message written on the piece of paper?';l,_3}}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839330,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 76,
+    "prompt_tokens": 3001,
+    "total_tokens": 3077
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_610 x:0.57 y:0.5 width:0.57 height:1.0 color:dimgray]
+    Now, answer the following question from the drone:  Is the person writing something? Answer only 'yes' or 'no
+
+Response: yes
+----------------------------------
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_610 x:0.58 y:0.5 width:0.56 height:1.0 color:dimgray]
+    Now, answer the following question from the drone:  What is the message written on the piece of paper?
+
+Response: the image provided does not show a piece of paper with any visible writing or message. the drone's planning module should check the image for any other objects or information that may be relevant to the task at hand.
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[person_610 x:0.47 y:0.5 width:0.76 height:1.0 color:dimgray, dining table_635 x:0.09 y:0.88 width:0.17 height:0.24 color:darkslategray]
+'task description':
+[A] Find the person. If he is actively writing, log "he is writing!", turn 360 degrees clockwise, then log the message written on the piece of paper
+'response':
+---
+{
+  "id": "chatcmpl-9H0Ce4wcruMiqLsvkOg0cBnoQHKxh",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=lr,'Is the person actively writing? Answer only 'yes' or 'no'';?_1/'yes'{l,'he is writing!';tc,360;_2=lr,'What is the message written on the piece of paper?';l,_2;->True}o,person;a",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839384,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 66,
+    "prompt_tokens": 3033,
+    "total_tokens": 3099
+  }
+}
+---
+
+------------- LLAVA REQUEST --------
+Question: You are the vision model for a drone that is attempting to accomplish tasks. 
+    The planning module of the drone will use you to gather specific information about the visible scene by asking you a question. When the question is asking for a specific piece of information, your answers should be as concise as possible, such as ‘which direction is person_20 facing?’ (Answer should be ‘Right’ or ‘Left’.) However, when the question is open ended and less concrete, such as 'tell me about the scene in front of you', or ‘describe chair_1’, you can answer normally. 
+    If you are asked to provide an object, use the 'id' (label) of the object whenever possible (for example, if asked 'what's the edible object on the table?', and there's an apple with id apple_20 on the table, you could respond 'apple_20')
+    Here is a list of objects which have been given ids in the scene, as well as their xy coordinates, width, height, and average color. Mostly, only the ids will be useful: [person_610 x:0.64 y:0.5 width:0.72 height:1.0 color:dimgray]
+    Now, answer the following question from the drone:  Is the person actively writing? Answer only 'yes' or 'no
+
+Response: no
+----------------------------------
+You are a drone pilot and you should follow the user's instructions to generate a MiniSpec plan to fulfill the task or give advice on user's input if it's not clear or not reasonable.
+Your response should carefully consider the 'system skills description', the 'scene description', and the 'task description'.
+The 'system skills description' describes the system's capabilities which include low-level and high-level skills. Low-level skills, while fixed, offer direct function calls to control the drone and acquire vision information. High-level skills, built with our language 'MiniSpec', are more flexible and can be used to build more complex skills. Whenever possible, please prioritize the use of high-level skills, invoke skills using their designated abbreviations, and ensure that 'object_name' refers to a specific type of object.
+Note the special low-level skill called 'llava_request', which lets you query a multi-modal LLM which can answer nuanced questions about the scene, including texture, visual description, uncommon objects (which may not appear in the scene description), and more.
+'llava_request' returns a string, so you will probably need to use its output as input to a 'query' command. Please also note that you will need to give LLaVA precise guidance of what output to produce. For example, you might consider ending your request to LLaVA with "output only 'yes' or 'no'", or "output only a number," or "output the id of the object" etc.
+
+The BNF syntax definition of 'MiniSpec' is as follows:
+<program> ::= { <block-statement> [';'] | <statement> ';' }
+<statement> ::= <variable-assign> | <function-call> | <return>
+<block-statement> ::= <loop> | <conditional>
+<loop> ::= <int> '{' <program> '}'
+<function-call> ::= <function-name> { ',' <argument> }
+<variable-assign> ::= <variable> '=' <function-call>
+<conditional> ::= '?' <condition> '{' <program> '}'
+<return> ::= '->' <value>
+<condition> ::= <value> <comparator> <value> { '&' <condition> | '|' <condition> }
+<comparator> ::= '>' | '<' | '==' | '!=' | '/'
+<function-name> ::= <alpha> { <alpha> }
+<argument> ::= <literal-value> { ',' <literal-value> }
+<variable> ::= '_' <int>
+<value> ::= <literal-value> | <variable> | <function-call>
+<literal-value> ::= <int> | <float> | <string> | <bool>
+
+Please note that the '/' comparator is a "has the substring" comparator. So 'a/b' would evaluate to true if and only if 'b' is a substring of a. This is especially useful when processing LLaVA responses, since it might not produce exactly the output you want. For example, if you ask LLaVA, "Is the person dressed nicely? Answer only 'yes' or 'no'", there is a chance that it could respond "yes, he is dressed fairly well". So, we would want to look for the substring "yes" rather than checking if the response is exactly equals the string "yes"
+
+Description of the two skill sets:
+- High-level skills:
+abbr:s,name:sweeping,definition:8{_1=iv,$1;?_1==True{->True}tc,45}->False,args:[object_name:str],description:Rotate to find a certain object when it's *not* in current scene
+abbr:sa,name:sweeping_abstract,definition:8{_1=q,$1;?_1!=False{->_1}tc,45}->False,args:[question:str],description:Rotate to find an abstract object by a description when it's *not* in current scene
+abbr:a,name:approach,definition:mf,120,args:[],description:Approach a certain object
+abbr:o,name:orienting,definition:4{_1=ox,$1;?_1>0.6{tc,15};?_1<0.4{tu,15};_2=ox,$1;?_2<0.6&_2>0.4{->True}}->False,args:[object_name:str],description:Rotate to align with a certain object
+abbr:sl,name:sweeping_llava,definition:8{_1=lr,$1;?_1/$2{->_1}tc,45}->False,args:[question:str, substring:str],description:Rotate, consult LLaVA at each step, and check for a specific substring in its output. Returns LLaVA's output if the substring is found, and False if it isn't found
+
+- Low-level skills:
+abbr:mf,name:move_forward,args:[distance:int],description:Move forward by a distance
+abbr:mb,name:move_backward,args:[distance:int],description:Move backward by a distance
+abbr:ml,name:move_left,args:[distance:int],description:Move left by a distance
+abbr:mr,name:move_right,args:[distance:int],description:Move right by a distance
+abbr:mu,name:move_up,args:[distance:int],description:Move up by a distance
+abbr:md,name:move_down,args:[distance:int],description:Move down by a distance
+abbr:tc,name:turn_cw,args:[degrees:int],description:Rotate clockwise/right by certain degrees
+abbr:tu,name:turn_ccw,args:[degrees:int],description:Rotate counterclockwise/left by certain degrees
+abbr:d,name:delay,args:[milliseconds:int],description:Wait for specified microseconds
+abbr:iv,name:is_visible,args:[object_name:str],description:Check the visibility of target object
+abbr:ox,name:object_x,args:[object_name:str],description:Get object's X-coordinate in (0,1)
+abbr:oy,name:object_y,args:[object_name:str],description:Get object's Y-coordinate in (0,1)
+abbr:ow,name:object_w,args:[object_name:str],description:Get object's width in (0,1)
+abbr:oh,name:object_h,args:[object_name:str],description:Get object's height in (0,1)
+abbr:l,name:log,args:[text:str],description:Output text to console
+abbr:p,name:picture,args:[],description:Take a picture
+abbr:q,name:query,args:[question:str],description:Query the LLM for reasoning
+abbr:lr,name:llava_request,args:[question:str],description:Query LLaVA for visual description, reasoning, and more
+abbr:r,name:replan,args:[task:str],description:Restart the planning process for the current task, given the new situation and position of the drone.
+
+
+The 'scene description' is an object list of the current view, containing their names with ID, location, and size (location and size are floats between 0~1). This may not be useful if the task is about the environment outside the view.
+Note that LLaVA can see the scene description, so you can ask questions about the objects in the scene description, including asking for an object id as output.
+The 'task description' is a natural language sentence, describing the user's instructions. It may start with "[A]" or "[Q]". "[A]" sentences mean you should generate an execution plan for the drone. "[Q]" sentences mean you should use 'log' to show a literal answer at the end of the plan execution. Please carefully reason about the 'task description', you should interpret it and generate a detailed multi-step plan to achieve it as much as you can while following the guides below:
+Handling Typos and Ambiguous Language: When encountering typos or vague language in user inputs, strive to clarify and correct these ambiguities. If a typo is evident, adjust the input to reflect the most likely intended meaning. For vague or unclear expressions, seek additional information from the user by returning a question to the user.
+Analytical Scene and Task Assessment: Evaluate the scene and task critically. If a specific condition or requirement is clearly deduced from the scene description, generate the corresponding action directly.
+Relevance to Current Scene: When considering tasks, assess their relevance to the current scene. If a task does not pertain to the existing scene, disregard any details from the current scene in formulating your response.
+Extraction of Key Information: Extract 'object_name' arguments or answers to questions primarily from the 'scene description'. If the necessary information is not present in the current scene, especially when the user asks the drone to move first or check somewhere else, use the query 'q,' followed by the 'question', to determine the 'object_name' or answer subsequently.
+
+Here is a list of example 'response' for different 'scene description' and 'task description', and their explanations:
+Example 1:
+    scene:[],task:[A] Find a bottle and tell me it's height.
+    response:_1=s,bottle;?_1==True{o,bottle;_2=oh,bottle;l,_2}
+    reason:no bottle instance in the scene, so we use sweeping to find bottle, then orienting and use object_height to get the height and log to output the height
+Example 2:
+    scene:[apple_5],task:[A] Find an apple.
+    response:o,apple;a
+    reason:there is an apple instance in the scene, so we orienting and approach the apple_5
+Example 3:
+    scene:[apple_3],task:[Q] Is there an apple on your left?
+    response:tu,90;_1=iv,apple;?_1==True{l,'Yes';->True}l,'No';->False
+    reason:turn left 90 degrees, then use is_visible to check whether there is an apple on your left
+Example 4:
+    scene:[chair_13, laptop_2],task:[A] Go to the chair behind you.
+    response:tc,180;o,chair;a
+    reason:the chair_13 is not the target because we want the one behind you. So we turn 180 degrees then orienting and approach the general object chair
+Example 5:
+    scene:[chair_3, laptop_1, bottle_5],task:[A] Find and go any edible object.
+    response:_1=sa,'what's the edible target?';?_1!=False{o,_1;a}
+    reason:edible object is abstract and there is no edible object in the scene, so we use sweeping_abstract to find the edible object
+Example 6:
+    scene:[chair_3, laptop_9],task:[A] Turn around with 30 degrees step until you can see some animal.
+    response:8{_1=q,'what's the animal target?';?_1!=False{l,_1;->True}tc,30}->False
+    reason:we use loop and query to find animal
+Example 7:
+    scene:[chair_3, laptop_9],task:[A] If you can see a chair, go find a person, else go find an orange.
+    response:_1=s,person;?_1==True{o,person;a;->True}?_1==False{_2=s,orange;?_2==True{o,orange;a;->True}}->False
+    reason:From the scene, we can see a chair, so we use sweeping to find a person
+Example 8:
+    scene:[chair_3, laptop_9],task:[A] Go to 
+    response:l,'Please give me more information.'
+    reason:The task is too vague, so we use log to output the advice
+Example 9:
+    scene:[person_1, person_2],task:[A] Approach the angriest-looking person.
+    response:_1=lr,'Which is angrier, the person_1 or person_2? Output only 'person_1' or 'person_2'';?_1/person_1{o,person_1;a}?_1/person_2{o,person_2;a}->False
+    reason:We use lr to ask llava which person is angrier. Then, depending on the output, we orient towards and approach the appropriate person.
+Example 10:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[A] Find and approach a trampoline in the area.
+    response:_1=sl,'Does the frame contain a trampoline? Answer only 'yes' or 'no'','yes';?_1!=False{a;->True}->False
+    reason:Trampolines are unusual objects, so we use sweeping_llava to check the surroundings until we find one, and once we do, we approach. If we complete the sweep without encountering one, we do nothing.
+Example 11:
+    scene:[tree_1, tree_2, tree_3, tree_4, tree_5],task:[Q] What's the color of the beanbag in the area, if any?
+    response:_1=sl,'Does the frame contain a beanbag? Answer only 'yes' or 'no'','yes';?_1!=False{_2=lr,'What is the color of the beanbag in the frame?';l,_2;->True}l,'There is no beanbag in the area';->False
+    reason:We use sweeping_llava to check the area for beanbags. If one is found, we can then ask llava what the color of the beanbag is, and log the output. If we fail to find one, we return False.
+
+Here are potential plans and error messages from your previous responses, if any (otherwise they will be empty), please read them carefully and try to generate a better response:
+None
+
+Now given the following 'scene description' and 'task description', please generate the response only with a single sentence of MiniSpec program.
+'scene description':
+[chair x:0.06 y:0.95 width:0.12 height:0.1 color:darkolivegreen]
+'task description':
+[A] Find the person. If he is actively writing, log "he is writing!", turn 360 degrees clockwise, then log the message written on the piece of paper
+'response':
+---
+{
+  "id": "chatcmpl-9H0D0FxqgKVHO0cyaI8iSrAUpisZG",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "_1=s,person;?_1==True{o,person;_2=lr,'Is the person actively writing? Answer only 'yes' or 'no'';?_2/'yes'{l,'he is writing!';tc,360;_3=lr,'What is the message written on the piece of paper?';l,_3}}->False",
+        "role": "assistant",
+        "function_call": null,
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1713839406,
+  "model": "gpt-4-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 76,
+    "prompt_tokens": 3002,
+    "total_tokens": 3078
+  }
+}
+---

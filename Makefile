@@ -49,7 +49,7 @@ build: validate_service
 typefly:
 	bash ./serving/webui/install_requirements.sh
 	cd ./proto && bash generate.sh
-	python3 ./serving/webui/typefly.py --use_http --llava_prefix --llava_bounding_boxes
+	python3 ./serving/webui/typefly.py --use_http --llava_prefix --llava_bounding_boxes --use_virtual_cam
 # Available feature flags:
 # --use_virtual_cam : Use virtual camera instead of real camera
 # --use_http: Use http instead of grpc (should be enabled more or less always)
